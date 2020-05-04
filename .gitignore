@@ -1,0 +1,25 @@
+# Byte-compiled / optimized / DLL files
+*.pyc
+__pycache__/
+build/
+dist/
+*.egg-info
+
+# Linux
+*~
+
+# Mac
+.DS_Store
+
+# IDE - Eclipse PyDev
+.project
+.pydevproject
+
+# IDE - PyCharm
+.idea/
+
+# IDE - VSCode
+.vscode/
+
+# Jupyter Notebook
+.ipynb_checkpoints

@@ -73,11 +73,6 @@ def arbitrary_address(family):
     if family == 'AF_INET':
         return ('localhost', 0)
     elif family == 'AF_UNIX':
-        # Prefer abstract sockets if possible to avoid problems with the address
-        # size.  When coding portable applications, some implementations have
-        # sun_path as short as 92 bytes in the sockaddr_un struct.
-        if util.abstract_sockets_supported:
-            return f"\0listener-{os.getpid()}-{next(_mmap_counter)}"
         return tempfile.mktemp(prefix='listener-', dir=util.get_temp_dir())
     elif family == 'AF_PIPE':
         return tempfile.mktemp(prefix=r'\\.\pipe\pyc-%d-%d-' %
@@ -106,7 +101,7 @@ def address_type(address):
         return 'AF_INET'
     elif type(address) is str and address.startswith('\\\\'):
         return 'AF_PIPE'
-    elif type(address) is str or util.is_abstract_socket_namespace(address):
+    elif type(address) is str:
         return 'AF_UNIX'
     else:
         raise ValueError('address type of %r unrecognized' % address)
@@ -393,33 +388,23 @@ class Connection(_ConnectionBase):
 
     def _send_bytes(self, buf):
         n = len(buf)
-        if n > 0x7fffffff:
-            pre_header = struct.pack("!i", -1)
-            header = struct.pack("!Q", n)
-            self._send(pre_header)
+        # For wire compatibility with 3.2 and lower
+        header = struct.pack("!i", n)
+        if n > 16384:
+            # The payload is large so Nagle's algorithm won't be triggered
+            # and we'd better avoid the cost of concatenation.
             self._send(header)
             self._send(buf)
         else:
-            # For wire compatibility with 3.7 and lower
-            header = struct.pack("!i", n)
-            if n > 16384:
-                # The payload is large so Nagle's algorithm won't be triggered
-                # and we'd better avoid the cost of concatenation.
-                self._send(header)
-                self._send(buf)
-            else:
-                # Issue #20540: concatenate before sending, to avoid delays due
-                # to Nagle's algorithm on a TCP socket.
-                # Also note we want to avoid sending a 0-length buffer separately,
-                # to avoid "broken pipe" errors if the other end closed the pipe.
-                self._send(header + buf)
+            # Issue #20540: concatenate before sending, to avoid delays due
+            # to Nagle's algorithm on a TCP socket.
+            # Also note we want to avoid sending a 0-length buffer separately,
+            # to avoid "broken pipe" errors if the other end closed the pipe.
+            self._send(header + buf)
 
     def _recv_bytes(self, maxsize=None):
         buf = self._recv(4)
         size, = struct.unpack("!i", buf.getvalue())
-        if size == -1:
-            buf = self._recv(8)
-            size, = struct.unpack("!Q", buf.getvalue())
         if maxsize is not None and size > maxsize:
             return None
         return self._recv(size)
@@ -477,13 +462,8 @@ class Listener(object):
             self._listener = None
             listener.close()
 
-    @property
-    def address(self):
-        return self._listener._address
-
-    @property
-    def last_accepted(self):
-        return self._listener._last_accepted
+    address = property(lambda self: self._listener._address)
+    last_accepted = property(lambda self: self._listener._last_accepted)
 
     def __enter__(self):
         return self
@@ -599,8 +579,7 @@ class SocketListener(object):
         self._family = family
         self._last_accepted = None
 
-        if family == 'AF_UNIX' and not util.is_abstract_socket_namespace(address):
-            # Linux abstract socket namespaces do not need to be explicitly unlinked
+        if family == 'AF_UNIX':
             self._unlink = util.Finalize(
                 self, os.unlink, args=(address,), exitpriority=0
                 )
@@ -733,9 +712,7 @@ FAILURE = b'#FAILURE#'
 
 def deliver_challenge(connection, authkey):
     import hmac
-    if not isinstance(authkey, bytes):
-        raise ValueError(
-            "Authkey must be bytes, not {0!s}".format(type(authkey)))
+    assert isinstance(authkey, bytes)
     message = os.urandom(MESSAGE_LENGTH)
     connection.send_bytes(CHALLENGE + message)
     digest = hmac.new(authkey, message, 'md5').digest()
@@ -748,9 +725,7 @@ def deliver_challenge(connection, authkey):
 
 def answer_challenge(connection, authkey):
     import hmac
-    if not isinstance(authkey, bytes):
-        raise ValueError(
-            "Authkey must be bytes, not {0!s}".format(type(authkey)))
+    assert isinstance(authkey, bytes)
     message = connection.recv_bytes(256)         # reject large message
     assert message[:len(CHALLENGE)] == CHALLENGE, 'message = %r' % message
     message = message[len(CHALLENGE):]

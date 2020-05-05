@@ -7,7 +7,7 @@
 # Licensed to PSF under a Contributor Agreement.
 #
 
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 import copyreg
 import functools
 import io
@@ -68,16 +68,12 @@ if sys.platform == 'win32':
     __all__ += ['DupHandle', 'duplicate', 'steal_handle']
     import _winapi
 
-    def duplicate(handle, target_process=None, inheritable=False,
-                  *, source_process=None):
+    def duplicate(handle, target_process=None, inheritable=False):
         '''Duplicate a handle.  (target_process is a handle not a pid!)'''
-        current_process = _winapi.GetCurrentProcess()
-        if source_process is None:
-            source_process = current_process
         if target_process is None:
-            target_process = current_process
+            target_process = _winapi.GetCurrentProcess()
         return _winapi.DuplicateHandle(
-            source_process, handle, target_process,
+            _winapi.GetCurrentProcess(), handle, target_process,
             0, inheritable, _winapi.DUPLICATE_SAME_ACCESS)
 
     def steal_handle(source_pid, handle):
@@ -169,10 +165,7 @@ else:
                 if len(cmsg_data) % a.itemsize != 0:
                     raise ValueError
                 a.frombytes(cmsg_data)
-                if len(a) % 256 != msg[0]:
-                    raise AssertionError(
-                        "Len is {0:n} but msg[0] is {1!r}".format(
-                            len(a), msg[0]))
+                assert len(a) % 256 == msg[0]
                 return list(a)
         except (ValueError, IndexError):
             pass

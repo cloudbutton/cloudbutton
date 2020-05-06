@@ -7,7 +7,7 @@
 # Licensed to PSF under a Contributor Agreement.
 #
 
-__all__ = ['Queue', 'SimpleQueue', 'JoinableQueue']
+__all__ = ['Queue', 'SimpleQueue', 'JoinableQueue', 'RemoteSimpleQueue']
 
 import sys
 import os
@@ -345,3 +345,31 @@ class SimpleQueue(object):
         else:
             with self._wlock:
                 self._writer.send_bytes(obj)
+
+
+#
+# Remote queue
+#
+class RemoteSimpleQueue(object):
+
+    def __init__(self):
+        self._reader, self._writer = connection.RemotePipe(duplex=False)
+        self._poll = self._reader.poll
+
+    def empty(self):
+        return not self._poll()
+
+    def __getstate__(self):
+        return (self._reader, self._writer)
+
+    def __setstate__(self, state):
+        (self._reader, self._writer) = state
+        self._poll = self._reader.poll
+
+    def get(self):
+        res = self._reader.recv_bytes()
+        return _ForkingPickler.loads(res)
+
+    def put(self, obj):
+        obj = _ForkingPickler.dumps(obj)
+        self._writer.send_bytes(obj)

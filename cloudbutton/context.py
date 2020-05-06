@@ -128,6 +128,10 @@ class BaseContext(object):
         from .queues import SimpleQueue
         return SimpleQueue(ctx=self.get_context())
     """
+    def SimpleQueue(self):
+        '''Returns a queue object'''
+        from .queues import RemoteSimpleQueue
+        return RemoteSimpleQueue()
 
     def Pool(self, processes=None, initializer=None, initargs=(),
              maxtasksperchild=None):

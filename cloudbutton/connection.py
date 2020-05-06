@@ -17,6 +17,8 @@ import struct
 import time
 import tempfile
 import itertools
+from random import randint
+import redis
 
 import _multiprocessing
 
@@ -62,6 +64,20 @@ def _init_timeout(timeout=CONNECTION_TIMEOUT):
 def _check_timeout(t):
     return time.monotonic() > t
 
+
+#
+#
+#
+
+from pywren_ibm_cloud.config import get_default_config_filename, load_yaml_config
+
+_redis_conn_params = None
+
+def _read_redis_config():
+    data = load_yaml_config(get_default_config_filename())
+    global _redis_conn_params
+    _redis_conn_params = data['redis']
+
 #
 #
 #
@@ -95,6 +111,7 @@ def _validate_family(family):
 def address_type(address):
     '''
     Return the types of the address
+
     This can be 'AF_INET', 'AF_UNIX', or 'AF_PIPE'
     '''
     if type(address) == tuple:
@@ -261,6 +278,158 @@ class _ConnectionBase:
     def __exit__(self, exc_type, exc_value, exc_tb):
         self.close()
 
+# !!!
+class _RedConnectionBase:
+    _handle = None
+
+    def __init__(self, handle, readable=True, writable=True):
+        handle = handle.__index__()
+        if handle < 0:
+            raise ValueError("invalid handle")
+        if not readable and not writable:
+            raise ValueError(
+                "at least one of `readable` and `writable` must be True")
+        self._handle = handle
+        self._readable = readable
+        self._writable = writable
+
+    # XXX should we use util.Finalize instead of a __del__?
+
+    def __del__(self):
+        if self._handle is not None:
+            self._close()
+
+    def _check_closed(self):
+        if self._handle is None:
+            raise OSError("handle is closed")
+
+    def _check_readable(self):
+        if not self._readable:
+            raise OSError("connection is write-only")
+
+    def _check_writable(self):
+        if not self._writable:
+            raise OSError("connection is read-only")
+
+    def _bad_message_length(self):
+        if self._writable:
+            self._readable = False
+        else:
+            self.close()
+        raise OSError("bad message length")
+
+    @property
+    def closed(self):
+        """True if the connection is closed"""
+        return self._handle is None
+
+    @property
+    def readable(self):
+        """True if the connection is readable"""
+        return self._readable
+
+    @property
+    def writable(self):
+        """True if the connection is writable"""
+        return self._writable
+
+    def fileno(self):
+        """File descriptor or handle of the connection"""
+        self._check_closed()
+        return self._handle
+
+    def close(self):
+        """Close the connection"""
+        if self._handle is not None:
+            try:
+                self._close()
+            finally:
+                self._handle = None
+
+    def send_bytes(self, buf, offset=0, size=None):
+        """Send the bytes data from a bytes-like object"""
+        self._check_closed()
+        self._check_writable()
+        m = memoryview(buf)
+        # HACK for byte-indexing of non-bytewise buffers (e.g. array.array)
+        if m.itemsize > 1:
+            m = memoryview(bytes(m))
+        n = len(m)
+        if offset < 0:
+            raise ValueError("offset is negative")
+        if n < offset:
+            raise ValueError("buffer length < offset")
+        if size is None:
+            size = n - offset
+        elif size < 0:
+            raise ValueError("size is negative")
+        elif offset + size > n:
+            raise ValueError("buffer length < offset + size")
+        self._send_bytes(m[offset:offset + size].tobytes()) # tobytes
+
+    def send(self, obj):
+        """Send a (picklable) object"""
+        self._check_closed()
+        self._check_writable()
+        self._send_bytes(_ForkingPickler.dumps(obj).tobytes())
+
+    def recv_bytes(self, maxlength=None):
+        """
+        Receive bytes data as a bytes object.
+        """
+        self._check_closed()
+        self._check_readable()
+        if maxlength is not None and maxlength < 0:
+            raise ValueError("negative maxlength")
+        buf = self._recv_bytes(maxlength)
+        if buf is None:
+            self._bad_message_length()
+        return buf.getvalue()
+
+    def recv_bytes_into(self, buf, offset=0):
+        """
+        Receive bytes data into a writeable bytes-like object.
+        Return the number of bytes read.
+        """
+        self._check_closed()
+        self._check_readable()
+        with memoryview(buf) as m:
+            # Get bytesize of arbitrary buffer
+            itemsize = m.itemsize
+            bytesize = itemsize * len(m)
+            if offset < 0:
+                raise ValueError("negative offset")
+            elif offset > bytesize:
+                raise ValueError("offset too large")
+            result = self._recv_bytes()
+            size = result.tell()
+            if bytesize < offset + size:
+                raise BufferTooShort(result.getvalue())
+            # Message can fit in dest
+            result.seek(0)
+            result.readinto(m[offset // itemsize :
+                              (offset + size) // itemsize])
+            return size
+
+    def recv(self):
+        """Receive a (picklable) object"""
+        self._check_closed()
+        self._check_readable()
+        buf = self._recv_bytes()
+        return _ForkingPickler.loads(buf.getbuffer())
+
+    def poll(self, timeout=0.0):
+        """Whether there is any input available to be read"""
+        self._check_closed()
+        self._check_readable()
+        return self._poll(timeout)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        self.close()        
+
 
 if _winapi:
 
@@ -414,6 +583,80 @@ class Connection(_ConnectionBase):
         return bool(r)
 
 
+class RedisConnection(_ConnectionBase):
+    """
+    Connection class for Redis.
+    """
+    def __init__(self, handle, conn_params, readable=True, writable=True):
+        super().__init__(handle, readable, writable)
+        self._conn_params = conn_params
+        self._bind()
+
+    def _bind(self):
+        self._client = redis.StrictRedis(**self._conn_params)
+
+    def __getstate__(self):
+        return (self._handle, self._conn_params, 
+                self._readable, self._writable)
+
+    def __setstate__(self, state):
+        (self._handle, self._conn_params,
+         self._readable, self._writable) = state
+        self._bind()
+
+    def _close(self, _close=None):
+        if hasattr(self._client, 'close'):  # FIXME: pywren runtime's redis version can't be closed
+            self._client.close()
+
+    def _write(self, handle, buf):
+        return self._client.rpush(handle, buf)
+
+    def _read(self, handle):
+        _, v = self._client.blpop([handle])
+        return v
+
+    def _send(self, buf, write=None):
+        raise Exception('Connection._send() on Redis')
+        remaining = len(buf)
+        while True:
+            n = write(self._handle, buf)
+            remaining -= n
+            if remaining == 0:
+                break
+            buf = buf[n:]
+
+    def _recv(self, size, read=None):
+        raise Exception('Connection._recv() on Redis')
+        buf = io.BytesIO()
+        handle = self._handle
+        remaining = size
+        while remaining > 0:
+            chunk = read(handle, remaining)
+            n = len(chunk)
+            if n == 0:
+                if remaining == size:
+                    raise EOFError
+                else:
+                    raise OSError("got end of file during message")
+            buf.write(chunk)
+            remaining -= n
+        return buf
+
+    def _send_bytes(self, buf):
+        self._write(self._handle, buf.tobytes())
+
+    def _recv_bytes(self, maxsize=None):
+        buf = io.BytesIO()
+        chunk = self._read(self._handle)
+        buf.write(chunk)
+        return buf
+
+    def _poll(self, timeout):
+        r = rediswait([(self._client, self._handle)], timeout)
+        return bool(r)
+
+
+
 #
 # Public functions
 #
@@ -421,6 +664,7 @@ class Connection(_ConnectionBase):
 class Listener(object):
     '''
     Returns a listener object.
+
     This is a wrapper for a bound socket which is 'listening' for
     connections, or for a Windows named pipe.
     '''
@@ -443,6 +687,7 @@ class Listener(object):
     def accept(self):
         '''
         Accept a connection on the bound socket or named pipe of `self`.
+
         Returns a `Connection` object.
         '''
         if self._listener is None:
@@ -509,6 +754,24 @@ if sys.platform != 'win32':
             fd1, fd2 = os.pipe()
             c1 = Connection(fd1, writable=False)
             c2 = Connection(fd2, readable=False)
+
+        return c1, c2
+
+
+    def RemotePipe(duplex=True):
+        '''
+        Returns pair of connection objects at either end of a pipe
+        '''
+        if _redis_conn_params is None:
+            _read_redis_config()
+        h1 = h2 = randint(1e8, 1e9)      
+
+        if duplex:
+            c1 = RedisConnection(h1, conn_params=_redis_conn_params)
+            c2 = RedisConnection(h2, conn_params=_redis_conn_params)
+        else:
+            c1 = RedisConnection(h1, conn_params=_redis_conn_params, writable=False)
+            c2 = RedisConnection(h2, conn_params=_redis_conn_params, readable=False)
 
         return c1, c2
 
@@ -804,6 +1067,7 @@ if sys.platform == 'win32':
     def wait(object_list, timeout=None):
         '''
         Wait till an object in object_list is ready/readable.
+
         Returns list of those objects in object_list which are ready/readable.
         '''
         if timeout is None:
@@ -893,6 +1157,7 @@ else:
     def wait(object_list, timeout=None):
         '''
         Wait till an object in object_list is ready/readable.
+
         Returns list of those objects in object_list which are ready/readable.
         '''
         with _WaitSelector() as selector:
@@ -911,6 +1176,27 @@ else:
                         timeout = deadline - time.monotonic()
                         if timeout < 0:
                             return ready
+
+
+    def rediswait(object_list, timeout=None):
+        if timeout is not None:
+                deadline = time.monotonic() + timeout
+
+        while True:
+            ready = []
+            for client, key in object_list:
+                l = client.llen(key)
+                if l > 0:
+                    ready.append((client, key))
+            
+            if any(ready):
+                return ready
+
+            if timeout is not None:
+                timeout = deadline - time.monotonic()
+                if timeout < 0:
+                    return ready
+            time.sleep(0.2)
 
 #
 # Make connection and socket objects sharable if possible

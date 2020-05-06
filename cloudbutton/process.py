@@ -18,7 +18,6 @@ import sys
 import signal
 import itertools
 from _weakrefset import WeakSet
-import pywren_ibm_cloud as pywren
 
 #
 #
@@ -29,6 +28,7 @@ try:
 except OSError:
     ORIGINAL_DIR = None
 
+
 #
 # Public functions
 #
@@ -38,6 +38,7 @@ def current_process():
     Return process object representing the current process
     '''
     return _current_process
+
 
 def active_children():
     '''
@@ -67,6 +68,8 @@ class BaseProcess(object):
     Process objects represent activity that is run in a separate process
     The class is analogous to `threading.Thread`
     '''
+    def _Popen(self):
+        raise NotImplementedError
 
     def __init__(self, group=None, target=None, name=None, args=(), kwargs={},
                  *, daemon=None):
@@ -80,10 +83,6 @@ class BaseProcess(object):
         self._args = tuple(args)
         self._kwargs = dict(kwargs)
         self._name = name or type(self).__name__ + '-' + ':'.join(str(i) for i in self._identity)
-
-        self._executor = pywren.function_executor()
-        self._future = None
-
         if daemon is not None:
             self.daemon = daemon
         _dangling.add(self)
@@ -99,11 +98,14 @@ class BaseProcess(object):
         '''
         Start child process
         '''
-        assert self._future is None, 'cannot start a process twice'
+        assert self._popen is None, 'cannot start a process twice'
+        assert self._parent_pid == os.getpid(), \
+               'can only start a process object created by current process'
+        assert not _current_process._config.get('daemon'), \
+               'daemonic processes are not allowed to have children'
         _cleanup()
-
-        self._future = self._executor.call_async(self._target, [*self._args, *self._kwargs])
-
+        self._popen = self._Popen(self)
+        self._sentinel = self._popen.sentinel
         # Avoid a refcycle if the target function holds an indirect
         # reference to the process object (see bpo-30775)
         del self._target, self._args, self._kwargs
@@ -119,15 +121,29 @@ class BaseProcess(object):
         '''
         Wait until child process terminates
         '''
-        assert self._future is not None, 'can only join a started process'
-        self._executor.wait(self._future)
-        _children.discard(self)
+        assert self._parent_pid == os.getpid(), 'can only join a child process'
+        assert self._popen is not None, 'can only join a started process'
+        res = self._popen.wait(timeout)
+        if res is not None:
+            _children.discard(self)
 
     def is_alive(self):
         '''
         Return whether process is alive
         '''
-        return self._future.running
+        if self is _current_process:
+            return True
+        assert self._parent_pid == os.getpid(), 'can only test a child process'
+
+        if self._popen is None:
+            return False
+
+        returncode = self._popen.poll()
+        if returncode is None:
+            return True
+        else:
+            _children.discard(self)
+            return False
 
     @property
     def name(self):
@@ -169,8 +185,8 @@ class BaseProcess(object):
         '''
         Return exit code of process or `None` if it has yet to stop
         '''
-        if self._future is None:
-            return self._future
+        if self._popen is None:
+            return self._popen
         return self._popen.poll()
 
     @property
@@ -178,7 +194,10 @@ class BaseProcess(object):
         '''
         Return identifier (PID) of process or `None` if it has yet to start
         '''
-        return self._future.activation_id
+        if self is _current_process:
+            return os.getpid()
+        else:
+            return self._popen and self._popen.pid
 
     pid = ident
 
@@ -188,8 +207,10 @@ class BaseProcess(object):
         Return a file descriptor (Unix) or handle (Windows) suitable for
         waiting for process termination.
         '''
-        assert self._future is not None, 'process not started'
-        return self._future
+        try:
+            return self._sentinel
+        except AttributeError:
+            raise ValueError("process not started")
 
     def __repr__(self):
         if self is _current_process:
@@ -212,53 +233,6 @@ class BaseProcess(object):
 
         return '<%s(%s, %s%s)>' % (type(self).__name__, self._name,
                                    status, self.daemon and ' daemon' or '')
-
-    ##
-
-    def _bootstrap(self):
-        print('PRINT TO DELETE: _bootstrap method of Process')
-        from . import util, context
-        global _current_process, _process_counter, _children
-
-        try:
-            if self._start_method is not None:
-                context._force_start_method(self._start_method)
-            _process_counter = itertools.count(1)
-            _children = set()
-            util._close_stdin()
-            old_process = _current_process
-            _current_process = self
-            try:
-                util._finalizer_registry.clear()
-                util._run_after_forkers()
-            finally:
-                # delay finalization of the old process object until after
-                # _run_after_forkers() is executed
-                del old_process
-            util.info('child process calling self.run()')
-            try:
-                self.run()
-                exitcode = 0
-            finally:
-                util._exit_function()
-        except SystemExit as e:
-            if not e.args:
-                exitcode = 1
-            elif isinstance(e.args[0], int):
-                exitcode = e.args[0]
-            else:
-                sys.stderr.write(str(e.args[0]) + '\n')
-                exitcode = 1
-        except:
-            exitcode = 1
-            import traceback
-            sys.stderr.write('Process %s:\n' % self.name)
-            traceback.print_exc()
-        finally:
-            util.info('process exiting with exitcode %d' % exitcode)
-            util._flush_std_streams()
-
-        return exitcode
 
 
 #

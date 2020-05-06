@@ -171,7 +171,7 @@ class Pool(object):
 
         self._processes = processes
         self._pool = []
-        self._repopulate_pool()
+        #self._repopulate_pool()
 
         self._worker_handler = threading.Thread(
             target=Pool._handle_workers,
@@ -759,6 +759,7 @@ class IMapIterator(object):
                 self._cond.notify()
                 del self._cache[self._job]
 
+
 #
 # Class whose instances are returned by `Pool.imap_unordered()`
 #
@@ -773,6 +774,7 @@ class IMapUnorderedIterator(IMapIterator):
             if self._index == self._length:
                 del self._cache[self._job]
 
+
 #
 #
 #
@@ -782,7 +784,7 @@ class ThreadPool(Pool):
 
     @staticmethod
     def Process(*args, **kwds):
-        from .dummy import Process
+        from multiprocessing.dummy import Process
         return Process(*args, **kwds)
 
     def __init__(self, processes=None, initializer=None, initargs=()):

@@ -1,5 +1,5 @@
 import sys
-
+import os
 
 from . import process
 from . import reduction
@@ -128,14 +128,14 @@ class BaseContext(object):
         from .queues import SimpleQueue
         return SimpleQueue(ctx=self.get_context())
     """
-    """
+
     def Pool(self, processes=None, initializer=None, initargs=(),
              maxtasksperchild=None):
         '''Returns a process pool object'''
         from .pool import Pool
         return Pool(processes, initializer, initargs, maxtasksperchild,
                     context=self.get_context())
-    """
+
     """
     def RawValue(self, typecode_or_type, *args):
         '''Returns a shared object'''
@@ -211,7 +211,7 @@ class BaseContext(object):
         from .forkserver import set_forkserver_preload
         set_forkserver_preload(module_names)
     """
-    """
+
     def get_context(self, method=None):
         if method is None:
             return self
@@ -221,31 +221,29 @@ class BaseContext(object):
             raise ValueError('cannot find context for %r' % method)
         ctx._check_available()
         return ctx
-    """
-    """
+
     def get_start_method(self, allow_none=False):
         return self._name
-    """
-    """
+
     def set_start_method(self, method, force=False):
         raise ValueError('cannot set start method of concrete context')
-    """
-    """
+
     @property
     def reducer(self):
         '''Controls how objects will be reduced to a form that can be
         shared with other processes.'''
         return globals().get('reduction')
-    """
-    """
+
     @reducer.setter
     def reducer(self, reduction):
         globals()['reduction'] = reduction
-    """
-    """
+
     def _check_available(self):
         pass
-    """
+
+    def getpid(self):
+        executor_id, job_id, call_id = os.environ.get('PYWREN_EXECUTION_ID').split('/')
+        return call_id
 
 
 #
@@ -254,6 +252,10 @@ class BaseContext(object):
 
 class Process(process.BaseProcess):
     _start_method = None
+
+    @staticmethod
+    def _Popen(process_obj):
+        return _default_context.get_context().Process._Popen(process_obj)
 
 
 class DefaultContext(BaseContext):
@@ -303,65 +305,35 @@ DefaultContext.__all__ = list(x for x in dir(DefaultContext) if x[0] != '_')
 # Context types for fixed start method
 #
 
-if sys.platform != 'win32':
 
-    class ForkProcess(process.BaseProcess):
-        _start_method = 'fork'
-        @staticmethod
-        def _Popen(process_obj):
-            from .popen_fork import Popen
-            return Popen(process_obj)
+class SpawnCloudProcess(process.BaseProcess):
+    _start_method = 'cloud'
 
-    class SpawnProcess(process.BaseProcess):
-        _start_method = 'spawn'
-        @staticmethod
-        def _Popen(process_obj):
-            from .popen_spawn_posix import Popen
-            return Popen(process_obj)
+    @staticmethod
+    def _Popen(process_obj):
+        from .popen_cloud import Popen
+        return Popen(process_obj)
 
-    class ForkServerProcess(process.BaseProcess):
-        _start_method = 'forkserver'
-        @staticmethod
-        def _Popen(process_obj):
-            from .popen_forkserver import Popen
-            return Popen(process_obj)
 
-    class ForkContext(BaseContext):
-        _name = 'fork'
-        Process = ForkProcess
+class SpawnCloudContext(BaseContext):
+    _name = 'cloud'
+    Process = SpawnCloudProcess
 
-    class SpawnContext(BaseContext):
-        _name = 'spawn'
-        Process = SpawnProcess
 
-    class ForkServerContext(BaseContext):
-        _name = 'forkserver'
-        Process = ForkServerProcess
-        def _check_available(self):
-            if not reduction.HAVE_SEND_HANDLE:
-                raise ValueError('forkserver start method not available')
+_concrete_contexts = {
+    'fork': SpawnCloudContext(),
+    'spawn': SpawnCloudContext(),
+    'forkserver': SpawnCloudContext(),
+    'cloud': SpawnCloudContext()
+}
 
-    _concrete_contexts = {
-        'fork': ForkContext(),
-        'spawn': SpawnContext(),
-        'forkserver': ForkServerContext(),
-    }
-    _default_context = DefaultContext(_concrete_contexts['fork'])
 
-else:
+_default_context = DefaultContext(_concrete_contexts['cloud'])
 
-    class SpawnProcess(process.BaseProcess):
-        _start_method = 'spawn'
-        @staticmethod
-        def _Popen(process_obj):
-            from .popen_spawn_win32 import Popen
-            return Popen(process_obj)
 
-    class SpawnContext(BaseContext):
-        _name = 'spawn'
-        Process = SpawnProcess
+#
+# Force the start method
+#
 
-    _concrete_contexts = {
-        'spawn': SpawnContext(),
-    }
-    _default_context = DefaultContext(_concrete_contexts['spawn'])
+def _force_start_method(method):
+    _default_context._actual_context = _concrete_contexts[method]

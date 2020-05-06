@@ -242,7 +242,7 @@ class BaseContext(object):
         pass
 
     def getpid(self):
-        executor_id, job_id, call_id = os.environ.get('PYWREN_EXECUTION_ID').split('/')
+        executor_id, job_id, call_id = os.environ.get('PYWREN_EXECUTION_ID').rsplit('/', 2)
         return call_id
 
 

@@ -7,7 +7,7 @@
 # Licensed to PSF under a Contributor Agreement.
 #
 
-__all__ = ['Queue', 'SimpleQueue', 'JoinableQueue', 'RemoteSimpleQueue']
+__all__ = ['Queue', 'SimpleQueue', 'JoinableQueue']
 
 import sys
 import os
@@ -304,56 +304,15 @@ class JoinableQueue(Queue):
             if not self._unfinished_tasks._semlock._is_zero():
                 self._cond.wait()
 
+
 #
 # Simplified Queue type -- really just a locked pipe
 #
 
 class SimpleQueue(object):
 
-    def __init__(self, *, ctx):
-        self._reader, self._writer = connection.Pipe(duplex=False)
-        self._rlock = ctx.Lock()
-        self._poll = self._reader.poll
-        if sys.platform == 'win32':
-            self._wlock = None
-        else:
-            self._wlock = ctx.Lock()
-
-    def empty(self):
-        return not self._poll()
-
-    def __getstate__(self):
-        context.assert_spawning(self)
-        return (self._reader, self._writer, self._rlock, self._wlock)
-
-    def __setstate__(self, state):
-        (self._reader, self._writer, self._rlock, self._wlock) = state
-        self._poll = self._reader.poll
-
-    def get(self):
-        with self._rlock:
-            res = self._reader.recv_bytes()
-        # unserialize the data after having released the lock
-        return _ForkingPickler.loads(res)
-
-    def put(self, obj):
-        # serialize the data before acquiring the lock
-        obj = _ForkingPickler.dumps(obj)
-        if self._wlock is None:
-            # writes to a message oriented win32 pipe are atomic
-            self._writer.send_bytes(obj)
-        else:
-            with self._wlock:
-                self._writer.send_bytes(obj)
-
-
-#
-# Remote queue
-#
-class RemoteSimpleQueue(object):
-
     def __init__(self):
-        self._reader, self._writer = connection.RemotePipe(duplex=False)
+        self._reader, self._writer = connection.Pipe(duplex=False)
         self._poll = self._reader.poll
 
     def empty(self):

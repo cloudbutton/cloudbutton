@@ -62,12 +62,11 @@ class BaseContext(object):
         m.start()
         return m
     """
-    """
+    
     def Pipe(self, duplex=True):
         '''Returns two connection object connected by a pipe'''
         from .connection import Pipe
         return Pipe(duplex)
-    """
     """
     def Lock(self):
         '''Returns a non-recursive lock object'''
@@ -122,12 +121,10 @@ class BaseContext(object):
         from .queues import JoinableQueue
         return JoinableQueue(maxsize, ctx=self.get_context())
     """
-    """
     def SimpleQueue(self):
         '''Returns a queue object'''
         from .queues import SimpleQueue
-        return SimpleQueue(ctx=self.get_context())
-    """
+        return SimpleQueue()
 
     def Pool(self, processes=None, initializer=None, initargs=(),
              maxtasksperchild=None):

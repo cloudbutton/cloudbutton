@@ -171,7 +171,7 @@ class Pool(object):
 
         self._processes = processes
         self._pool = []
-        #self._repopulate_pool()
+        self._repopulate_pool()
 
         self._worker_handler = threading.Thread(
             target=Pool._handle_workers,
@@ -553,7 +553,7 @@ class Pool(object):
     def _help_stuff_finish(inqueue, task_handler, size):
         # task_handler may be blocked trying to put items on inqueue
         util.debug('removing tasks from inqueue until task handler finished')
-        inqueue._rlock.acquire()
+        
         while task_handler.is_alive() and inqueue._reader.poll():
             inqueue._reader.recv()
             time.sleep(0)

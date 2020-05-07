@@ -18,7 +18,6 @@ import time
 import tempfile
 import itertools
 from random import randint
-import redis
 
 import _multiprocessing
 
@@ -64,19 +63,6 @@ def _init_timeout(timeout=CONNECTION_TIMEOUT):
 def _check_timeout(t):
     return time.monotonic() > t
 
-
-#
-#
-#
-
-from pywren_ibm_cloud.config import get_default_config_filename, load_yaml_config
-
-_redis_conn_params = None
-
-def _read_redis_config():
-    data = load_yaml_config(get_default_config_filename())
-    global _redis_conn_params
-    _redis_conn_params = data['redis']
 
 #
 #
@@ -140,6 +126,13 @@ class _ConnectionBase:
         self._handle = handle
         self._readable = readable
         self._writable = writable
+
+
+    def __getstate__(self):
+        return (self._handle, self._readable, self._writable)
+
+    def __setstate__(self, state):
+        (self._handle, self._readable, self._writable) = state
 
     # XXX should we use util.Finalize instead of a __del__?
 
@@ -279,29 +272,179 @@ class _ConnectionBase:
         self.close()
 
 
+if _winapi:
+
+    class PipeConnection(_ConnectionBase):
+        """
+        Connection class based on a Windows named pipe.
+        Overlapped I/O is used, so the handles must have been created
+        with FILE_FLAG_OVERLAPPED.
+        """
+        _got_empty_message = False
+
+        def _close(self, _CloseHandle=_winapi.CloseHandle):
+            _CloseHandle(self._handle)
+
+        def _send_bytes(self, buf):
+            ov, err = _winapi.WriteFile(self._handle, buf, overlapped=True)
+            try:
+                if err == _winapi.ERROR_IO_PENDING:
+                    waitres = _winapi.WaitForMultipleObjects(
+                        [ov.event], False, INFINITE)
+                    assert waitres == WAIT_OBJECT_0
+            except:
+                ov.cancel()
+                raise
+            finally:
+                nwritten, err = ov.GetOverlappedResult(True)
+            assert err == 0
+            assert nwritten == len(buf)
+
+        def _recv_bytes(self, maxsize=None):
+            if self._got_empty_message:
+                self._got_empty_message = False
+                return io.BytesIO()
+            else:
+                bsize = 128 if maxsize is None else min(maxsize, 128)
+                try:
+                    ov, err = _winapi.ReadFile(self._handle, bsize,
+                                                overlapped=True)
+                    try:
+                        if err == _winapi.ERROR_IO_PENDING:
+                            waitres = _winapi.WaitForMultipleObjects(
+                                [ov.event], False, INFINITE)
+                            assert waitres == WAIT_OBJECT_0
+                    except:
+                        ov.cancel()
+                        raise
+                    finally:
+                        nread, err = ov.GetOverlappedResult(True)
+                        if err == 0:
+                            f = io.BytesIO()
+                            f.write(ov.getbuffer())
+                            return f
+                        elif err == _winapi.ERROR_MORE_DATA:
+                            return self._get_more_data(ov, maxsize)
+                except OSError as e:
+                    if e.winerror == _winapi.ERROR_BROKEN_PIPE:
+                        raise EOFError
+                    else:
+                        raise
+            raise RuntimeError("shouldn't get here; expected KeyboardInterrupt")
+
+        def _poll(self, timeout):
+            if (self._got_empty_message or
+                        _winapi.PeekNamedPipe(self._handle)[0] != 0):
+                return True
+            return bool(wait([self], timeout))
+
+        def _get_more_data(self, ov, maxsize):
+            buf = ov.getbuffer()
+            f = io.BytesIO()
+            f.write(buf)
+            left = _winapi.PeekNamedPipe(self._handle)[1]
+            assert left > 0
+            if maxsize is not None and len(buf) + left > maxsize:
+                self._bad_message_length()
+            ov, err = _winapi.ReadFile(self._handle, left, overlapped=True)
+            rbytes, err = ov.GetOverlappedResult(True)
+            assert err == 0
+            assert rbytes == left
+            f.write(ov.getbuffer())
+            return f
+
+
 class Connection(_ConnectionBase):
+    """
+    Connection class based on an arbitrary file descriptor (Unix only), or
+    a socket handle (Windows).
+    """
+
+    if _winapi:
+        def _close(self, _close=_multiprocessing.closesocket):
+            _close(self._handle)
+        _write = _multiprocessing.send
+        _read = _multiprocessing.recv
+    else:
+        def _close(self, _close=os.close):
+            _close(self._handle)
+        _write = os.write
+        _read = os.read
+
+    def _send(self, buf, write=_write):
+        remaining = len(buf)
+        while True:
+            n = write(self._handle, buf)
+            remaining -= n
+            if remaining == 0:
+                break
+            buf = buf[n:]
+
+    def _recv(self, size, read=_read):
+        buf = io.BytesIO()
+        handle = self._handle
+        remaining = size
+        while remaining > 0:
+            chunk = read(handle, remaining)
+            n = len(chunk)
+            if n == 0:
+                if remaining == size:
+                    raise EOFError
+                else:
+                    raise OSError("got end of file during message")
+            buf.write(chunk)
+            remaining -= n
+        return buf
+
+    def _send_bytes(self, buf):
+        n = len(buf)
+        # For wire compatibility with 3.2 and lower
+        header = struct.pack("!i", n)
+        if n > 16384:
+            # The payload is large so Nagle's algorithm won't be triggered
+            # and we'd better avoid the cost of concatenation.
+            self._send(header)
+            self._send(buf)
+        else:
+            # Issue #20540: concatenate before sending, to avoid delays due
+            # to Nagle's algorithm on a TCP socket.
+            # Also note we want to avoid sending a 0-length buffer separately,
+            # to avoid "broken pipe" errors if the other end closed the pipe.
+            self._send(header + buf)
+
+    def _recv_bytes(self, maxsize=None):
+        buf = self._recv(4)
+        size, = struct.unpack("!i", buf.getvalue())
+        if maxsize is not None and size > maxsize:
+            return None
+        return self._recv(size)
+
+    def _poll(self, timeout):
+        r = wait([self], timeout)
+        return bool(r)
+
+
+class RedisConnection(_ConnectionBase):
     """
     Connection class for Redis.
     """
-    def __init__(self, handle, conn_params, readable=True, writable=True):
+    def __init__(self, handle, ctx, readable=True, writable=True):
         super().__init__(handle, readable, writable)
-        self._conn_params = conn_params
-        self._bind()
-
-    def _bind(self):
-        self._client = redis.StrictRedis(**self._conn_params)
+        self._client = ctx.get_redis_client()
 
     def __getstate__(self):
-        return (self._handle, self._conn_params, 
-                self._readable, self._writable)
+        return _ConnectionBase.__getstate__(self) + (self._client,)
 
     def __setstate__(self, state):
-        (self._handle, self._conn_params,
-         self._readable, self._writable) = state
-        self._bind()
+        _ConnectionBase.__setstate__(self, state[:-1])
+        self._client = state[-1]
+
+    def __len__(self):
+        return self._client.llen(self._handle)
 
     def _close(self, _close=None):
-        if hasattr(self._client, 'close'):  # FIXME: pywren runtime's redis version can't be closed
+        # FIXME: older versions of redis clients can't be closed
+        if hasattr(self._client, 'close'):
             self._client.close()
 
     def _write(self, handle, buf):
@@ -350,7 +493,6 @@ class Connection(_ConnectionBase):
     def _poll(self, timeout):
         r = rediswait([(self._client, self._handle)], timeout)
         return bool(r)
-
 
 
 #
@@ -434,20 +576,18 @@ def Client(address, family=None, authkey=None):
     return c
 
 
-def Pipe(duplex=True):
+def Pipe(ctx, duplex=True):
     '''
     Returns pair of connection objects at either end of a pipe
     '''
-    if _redis_conn_params is None:
-        _read_redis_config()
     h1 = h2 = randint(1e8, 1e9)      
 
     if duplex:
-        c1 = Connection(h1, conn_params=_redis_conn_params)
-        c2 = Connection(h2, conn_params=_redis_conn_params)
+        c1 = RedisConnection(h1, ctx)
+        c2 = RedisConnection(h2, ctx)
     else:
-        c1 = Connection(h1, conn_params=_redis_conn_params, writable=False)
-        c2 = Connection(h2, conn_params=_redis_conn_params, readable=False)
+        c1 = RedisConnection(h1, ctx, writable=False)
+        c2 = RedisConnection(h2, ctx, readable=False)
 
     return c1, c2
 
@@ -508,6 +648,96 @@ def SocketClient(address):
         s.setblocking(True)
         s.connect(address)
         return Connection(s.detach())
+
+
+#
+# Definitions for connections based on named pipes
+#
+
+if sys.platform == 'win32':
+
+    class PipeListener(object):
+        '''
+        Representation of a named pipe
+        '''
+        def __init__(self, address, backlog=None):
+            self._address = address
+            self._handle_queue = [self._new_handle(first=True)]
+
+            self._last_accepted = None
+            util.sub_debug('listener created with address=%r', self._address)
+            self.close = util.Finalize(
+                self, PipeListener._finalize_pipe_listener,
+                args=(self._handle_queue, self._address), exitpriority=0
+                )
+
+        def _new_handle(self, first=False):
+            flags = _winapi.PIPE_ACCESS_DUPLEX | _winapi.FILE_FLAG_OVERLAPPED
+            if first:
+                flags |= _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE
+            return _winapi.CreateNamedPipe(
+                self._address, flags,
+                _winapi.PIPE_TYPE_MESSAGE | _winapi.PIPE_READMODE_MESSAGE |
+                _winapi.PIPE_WAIT,
+                _winapi.PIPE_UNLIMITED_INSTANCES, BUFSIZE, BUFSIZE,
+                _winapi.NMPWAIT_WAIT_FOREVER, _winapi.NULL
+                )
+
+        def accept(self):
+            self._handle_queue.append(self._new_handle())
+            handle = self._handle_queue.pop(0)
+            try:
+                ov = _winapi.ConnectNamedPipe(handle, overlapped=True)
+            except OSError as e:
+                if e.winerror != _winapi.ERROR_NO_DATA:
+                    raise
+                # ERROR_NO_DATA can occur if a client has already connected,
+                # written data and then disconnected -- see Issue 14725.
+            else:
+                try:
+                    res = _winapi.WaitForMultipleObjects(
+                        [ov.event], False, INFINITE)
+                except:
+                    ov.cancel()
+                    _winapi.CloseHandle(handle)
+                    raise
+                finally:
+                    _, err = ov.GetOverlappedResult(True)
+                    assert err == 0
+            return PipeConnection(handle)
+
+        @staticmethod
+        def _finalize_pipe_listener(queue, address):
+            util.sub_debug('closing listener with address=%r', address)
+            for handle in queue:
+                _winapi.CloseHandle(handle)
+
+    def PipeClient(address):
+        '''
+        Return a connection object connected to the pipe given by `address`
+        '''
+        t = _init_timeout()
+        while 1:
+            try:
+                _winapi.WaitNamedPipe(address, 1000)
+                h = _winapi.CreateFile(
+                    address, _winapi.GENERIC_READ | _winapi.GENERIC_WRITE,
+                    0, _winapi.NULL, _winapi.OPEN_EXISTING,
+                    _winapi.FILE_FLAG_OVERLAPPED, _winapi.NULL
+                    )
+            except OSError as e:
+                if e.winerror not in (_winapi.ERROR_SEM_TIMEOUT,
+                                      _winapi.ERROR_PIPE_BUSY) or _check_timeout(t):
+                    raise
+            else:
+                break
+        else:
+            raise
+
+        _winapi.SetNamedPipeHandleState(
+            h, _winapi.PIPE_READMODE_MESSAGE, None, None
+            )
+        return PipeConnection(h)
 
 
 #

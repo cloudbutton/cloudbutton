@@ -3,6 +3,7 @@ import os
 
 from . import process
 from . import reduction
+from . import util
 
 __all__ = []            # things are copied from here to __init__.py
 
@@ -66,7 +67,7 @@ class BaseContext(object):
     def Pipe(self, duplex=True):
         '''Returns two connection object connected by a pipe'''
         from .connection import Pipe
-        return Pipe(duplex)
+        return Pipe(self.get_context(), duplex)
     """
     def Lock(self):
         '''Returns a non-recursive lock object'''
@@ -109,22 +110,20 @@ class BaseContext(object):
         from .synchronize import Barrier
         return Barrier(parties, action, timeout, ctx=self.get_context())
     """
-    """
     def Queue(self, maxsize=0):
         '''Returns a queue object'''
         from .queues import Queue
         return Queue(maxsize, ctx=self.get_context())
-    """
-    """
+
     def JoinableQueue(self, maxsize=0):
         '''Returns a queue object'''
         from .queues import JoinableQueue
         return JoinableQueue(maxsize, ctx=self.get_context())
-    """
+
     def SimpleQueue(self):
         '''Returns a queue object'''
         from .queues import SimpleQueue
-        return SimpleQueue()
+        return SimpleQueue(ctx=self.get_context())
 
     def Pool(self, processes=None, initializer=None, initargs=(),
              maxtasksperchild=None):
@@ -315,6 +314,15 @@ class SpawnCloudProcess(process.BaseProcess):
 class SpawnCloudContext(BaseContext):
     _name = 'cloud'
     Process = SpawnCloudProcess
+
+    def __init__(self):
+        super().__init__()
+
+        # isolate params with a client factory
+        conn_params = util.get_redis_conn_params()
+        def get_redis_client():
+            return reduction.PicklableRedis(**conn_params)
+        self.get_redis_client = get_redis_client
 
 
 _concrete_contexts = {

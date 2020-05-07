@@ -22,7 +22,7 @@ __all__ = [
     'sub_debug', 'debug', 'info', 'sub_warning', 'get_logger',
     'log_to_stderr', 'get_temp_dir', 'register_after_fork',
     'is_exiting', 'Finalize', 'ForkAwareThreadLock', 'ForkAwareLocal',
-    'close_all_fds_except', 'SUBDEBUG', 'SUBWARNING',
+    'close_all_fds_except', 'SUBDEBUG', 'SUBWARNING', 'get_redis_conn_params'
     ]
 
 #
@@ -417,3 +417,16 @@ def spawnv_passfds(path, args, passfds):
     finally:
         os.close(errpipe_read)
         os.close(errpipe_write)
+
+
+#
+# Read redis params from config file
+#
+
+# TODO: use own config file
+from pywren_ibm_cloud.config import get_default_config_filename, load_yaml_config
+
+def get_redis_conn_params():
+    config_file = get_default_config_filename()
+    data = load_yaml_config(config_file)
+    return data['redis']

@@ -15,7 +15,6 @@ import os
 import pickle
 import socket
 import sys
-import redis
 
 from . import context
 
@@ -273,19 +272,3 @@ class AbstractReducer(metaclass=ABCMeta):
         register(type(int.__add__), _reduce_method_descriptor)
         register(functools.partial, _reduce_partial)
         register(socket.socket, _reduce_socket)
-
-
-#
-# Picklable redis client
-#
-
-class PicklableRedis(redis.StrictRedis):
-    def __init__(self, **args):
-        super().__init__(**args)
-        self._args = args
-
-    def __getstate__(self):
-        return self._args
-
-    def __setstate__(self, state):
-        self.__init__(**state)

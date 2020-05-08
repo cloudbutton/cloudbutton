@@ -34,7 +34,7 @@ from .util import debug, info, Finalize, register_after_fork, is_exiting
 class Queue(object):
 
     def __init__(self, maxsize=0, *, ctx):
-        self._reader, self._writer = ctx.Pipe(duplex=False)
+        self._reader, self._writer = connection.Pipe(duplex=False)
         self._opid = os.getpid()
         
         # For use by concurrent.futures
@@ -274,8 +274,8 @@ class JoinableQueue(Queue):
 
 class SimpleQueue(object):
 
-    def __init__(self, ctx):
-        self._reader, self._writer = ctx.Pipe(duplex=False)
+    def __init__(self, *, ctx):
+        self._reader, self._writer = connection.Pipe(duplex=False)
         self._poll = self._reader.poll
 
     def empty(self):

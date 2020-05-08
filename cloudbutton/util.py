@@ -12,6 +12,7 @@ import itertools
 import sys
 import weakref
 import atexit
+import redis
 import threading        # we want threading to install it's
                         # cleanup function before multiprocessing does
 from subprocess import _args_from_interpreter_flags
@@ -426,7 +427,28 @@ def spawnv_passfds(path, args, passfds):
 # TODO: use own config file
 from pywren_ibm_cloud.config import get_default_config_filename, load_yaml_config
 
+#
+# Picklable redis client
+#
+
+class PicklableRedis(redis.StrictRedis):
+    def __init__(self, **args):
+        super().__init__(**args)
+        self._args = args
+
+    def __getstate__(self):
+        return self._args
+
+    def __setstate__(self, state):
+        self.__init__(**state)
+
+
 def get_redis_conn_params():
     config_file = get_default_config_filename()
     data = load_yaml_config(config_file)
     return data['redis']
+
+
+def get_redis_client():
+    conn_params = get_redis_conn_params()
+    return PicklableRedis(**conn_params)

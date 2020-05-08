@@ -356,76 +356,6 @@ if _winapi:
 
 class Connection(_ConnectionBase):
     """
-    Connection class based on an arbitrary file descriptor (Unix only), or
-    a socket handle (Windows).
-    """
-
-    if _winapi:
-        def _close(self, _close=_multiprocessing.closesocket):
-            _close(self._handle)
-        _write = _multiprocessing.send
-        _read = _multiprocessing.recv
-    else:
-        def _close(self, _close=os.close):
-            _close(self._handle)
-        _write = os.write
-        _read = os.read
-
-    def _send(self, buf, write=_write):
-        remaining = len(buf)
-        while True:
-            n = write(self._handle, buf)
-            remaining -= n
-            if remaining == 0:
-                break
-            buf = buf[n:]
-
-    def _recv(self, size, read=_read):
-        buf = io.BytesIO()
-        handle = self._handle
-        remaining = size
-        while remaining > 0:
-            chunk = read(handle, remaining)
-            n = len(chunk)
-            if n == 0:
-                if remaining == size:
-                    raise EOFError
-                else:
-                    raise OSError("got end of file during message")
-            buf.write(chunk)
-            remaining -= n
-        return buf
-
-    def _send_bytes(self, buf):
-        n = len(buf)
-        # For wire compatibility with 3.2 and lower
-        header = struct.pack("!i", n)
-        if n > 16384:
-            # The payload is large so Nagle's algorithm won't be triggered
-            # and we'd better avoid the cost of concatenation.
-            self._send(header)
-            self._send(buf)
-        else:
-            # Issue #20540: concatenate before sending, to avoid delays due
-            # to Nagle's algorithm on a TCP socket.
-            # Also note we want to avoid sending a 0-length buffer separately,
-            # to avoid "broken pipe" errors if the other end closed the pipe.
-            self._send(header + buf)
-
-    def _recv_bytes(self, maxsize=None):
-        buf = self._recv(4)
-        size, = struct.unpack("!i", buf.getvalue())
-        if maxsize is not None and size > maxsize:
-            return None
-        return self._recv(size)
-
-    def _poll(self, timeout):
-        r = wait([self], timeout)
-        return bool(r)
-
-
-class RedisConnection(_ConnectionBase):
-    """
     Connection class for Redis.
     """
     def __init__(self, handle, readable=True, writable=True):
@@ -491,7 +421,7 @@ class RedisConnection(_ConnectionBase):
         return buf
 
     def _poll(self, timeout):
-        r = rediswait([(self._client, self._handle)], timeout)
+        r = wait([(self._client, self._handle)], timeout)
         return bool(r)
 
 
@@ -583,11 +513,11 @@ def Pipe(duplex=True):
     h1 = h2 = randint(1e8, 1e9)      
 
     if duplex:
-        c1 = RedisConnection(h1)
-        c2 = RedisConnection(h2)
+        c1 = Connection(h1)
+        c2 = Connection(h2)
     else:
-        c1 = RedisConnection(h1, writable=False)
-        c2 = RedisConnection(h2, readable=False)
+        c1 = Connection(h1, writable=False)
+        c2 = Connection(h2, readable=False)
 
     return c1, c2
 
@@ -827,33 +757,15 @@ if hasattr(selectors, 'PollSelector'):
 else:
     _WaitSelector = selectors.SelectSelector
 
+
 def wait(object_list, timeout=None):
     '''
     Wait till an object in object_list is ready/readable.
 
     Returns list of those objects in object_list which are ready/readable.
     '''
-    with _WaitSelector() as selector:
-        for obj in object_list:
-            selector.register(obj, selectors.EVENT_READ)
-
-        if timeout is not None:
-            deadline = time.monotonic() + timeout
-
-        while True:
-            ready = selector.select(timeout)
-            if ready:
-                return [key.fileobj for (key, events) in ready]
-            else:
-                if timeout is not None:
-                    timeout = deadline - time.monotonic()
-                    if timeout < 0:
-                        return ready
-
-
-def rediswait(object_list, timeout=None):
     if timeout is not None:
-            deadline = time.monotonic() + timeout
+        deadline = time.monotonic() + timeout
 
     while True:
         ready = []
@@ -861,7 +773,7 @@ def rediswait(object_list, timeout=None):
             l = client.llen(key)
             if l > 0:
                 ready.append((client, key))
-        
+
         if any(ready):
             return ready
 

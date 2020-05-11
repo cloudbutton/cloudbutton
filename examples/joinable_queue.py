@@ -13,9 +13,10 @@ def worker(q):
 
         # Confirm task
         q.task_done()
-        
+
         if x == -1:
             working = False
+
 
 if __name__ == '__main__':
     q = JoinableQueue()

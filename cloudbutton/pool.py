@@ -17,11 +17,9 @@ import threading
 import queue
 import itertools
 import collections
-import os
 import time
 import traceback
-
-import pywren_ibm_cloud as pywren
+import pywren_ibm_cloud as pic
 
 # If threading is available then ThreadPool should be provided.  Therefore
 # we avoid top-level imports which are liable to fail on some systems.
@@ -170,10 +168,10 @@ class Pool(object):
             raise ValueError("Number of processes must be at least 1")
 
         if processes is not None:
-            self._executor = pywren.function_executor(workers=processes)
+            self._executor = pic.function_executor(workers=processes, **self._initargs)
             self._processes = processes
         else:
-            self._executor = pywren.function_executor()
+            self._executor = pic.function_executor(**self._initargs)
             self._processes = self._executor.invoker.workers
 
         if initializer is not None and not callable(initializer):

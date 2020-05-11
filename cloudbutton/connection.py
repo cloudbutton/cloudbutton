@@ -127,13 +127,6 @@ class _ConnectionBase:
         self._readable = readable
         self._writable = writable
 
-
-    def __getstate__(self):
-        return (self._handle, self._readable, self._writable)
-
-    def __setstate__(self, state):
-        (self._handle, self._readable, self._writable) = state
-
     # XXX should we use util.Finalize instead of a __del__?
 
     def __del__(self):
@@ -361,13 +354,6 @@ class Connection(_ConnectionBase):
     def __init__(self, handle, readable=True, writable=True):
         super().__init__(handle, readable, writable)
         self._client = util.get_redis_client()
-
-    def __getstate__(self):
-        return _ConnectionBase.__getstate__(self) + (self._client,)
-
-    def __setstate__(self, state):
-        _ConnectionBase.__setstate__(self, state[:-1])
-        self._client = state[-1]
 
     def __len__(self):
         return self._client.llen(self._handle)

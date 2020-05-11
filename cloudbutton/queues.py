@@ -178,6 +178,7 @@ class Queue(object):
 
     @staticmethod
     def _feed(buffer, notempty, send_bytes, close, ignore_epipe):
+        raise Exception('Not thrown unless thread is able to be executed')
         debug('starting thread to feed data to pipe')
         nacquire = notempty.acquire
         nrelease = notempty.release
@@ -224,31 +225,79 @@ _sentinel = object()
 
 
 #
+# Simplified Queue type
+#
+
+class SimpleQueue(object):
+
+    def __init__(self, *, ctx):
+        self._reader, self._writer = connection.Pipe(duplex=False)
+        self._poll = self._reader.poll
+        self._closed = False
+
+    def __getstate__(self):
+        return (self._reader, self._writer)
+
+    def __setstate__(self, state):
+        (self._reader, self._writer) = state
+        self._poll = self._reader.poll
+
+    def get(self):
+        res = self._reader.recv_bytes()
+        return _ForkingPickler.loads(res)
+
+    def put(self, obj):
+        obj = _ForkingPickler.dumps(obj)
+        self._writer.send_bytes(obj)
+
+    def qsize(self):
+        return len(self._reader)
+
+    def empty(self):
+        return not self._poll()
+
+    def full(self):
+        return False
+
+    def get_nowait(self):
+        return self.get(False)
+
+    def put_nowait(self, obj):
+        return self.put(obj, False)
+
+    def close(self):
+        if not self._closed:
+            self._reader.close()
+            self._closed = True
+
+#
 # A queue type which also supports join() and task_done() methods
 #
 
-class JoinableQueue(Queue):
+class JoinableQueue(SimpleQueue):
 
     def __init__(self, maxsize=0, *, ctx):
-        Queue.__init__(self, maxsize, ctx=ctx)
+        SimpleQueue.__init__(self, ctx=ctx)
         self._unfinished_tasks, _ = ctx.Pipe(duplex=True)
 
     def __getstate__(self):
-        return Queue.__getstate__(self) + (self._unfinished_tasks,)
+        return SimpleQueue.__getstate__(self) + (self._unfinished_tasks,)
 
     def __setstate__(self, state):
-        Queue.__setstate__(self, state[:-1])
+        SimpleQueue.__setstate__(self, state[:-1])
         self._unfinished_tasks = state[-1]
 
     def put(self, obj, block=True, timeout=None):
         assert not self._closed
+        self._unfinished_tasks.send_bytes(b'unfinised_task')
+        SimpleQueue.put(self, obj)
 
-        with self._notempty:
-            if self._thread is None:
-                self._start_thread()
-            self._buffer.append(obj)
-            self._unfinished_tasks.send_bytes(b'unfinised_task')
-            self._notempty.notify()
+        # with self._notempty:
+        #     if self._thread is None:
+        #         self._start_thread()
+        #     self._buffer.append(obj)
+        #     self._unfinished_tasks.send_bytes(b'unfinised_task')
+        #     self._notempty.notify()
 
     def task_done(self):
         length = len(self._unfinished_tasks)
@@ -266,32 +315,3 @@ class JoinableQueue(Queue):
                 time.sleep(sleep_for)
             else:
                 break
-
-
-#
-# Simplified Queue type
-#
-
-class SimpleQueue(object):
-
-    def __init__(self, *, ctx):
-        self._reader, self._writer = connection.Pipe(duplex=False)
-        self._poll = self._reader.poll
-
-    def empty(self):
-        return not self._poll()
-
-    def __getstate__(self):
-        return (self._reader, self._writer)
-
-    def __setstate__(self, state):
-        (self._reader, self._writer) = state
-        self._poll = self._reader.poll
-
-    def get(self):
-        res = self._reader.recv_bytes()
-        return _ForkingPickler.loads(res)
-
-    def put(self, obj):
-        obj = _ForkingPickler.dumps(obj)
-        self._writer.send_bytes(obj)

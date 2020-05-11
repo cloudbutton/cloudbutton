@@ -16,6 +16,9 @@ import sys
 import tempfile
 import _multiprocessing
 import time
+import uuid
+from collections import deque
+from redis.lock import Lock as RedisLock
 
 from . import context
 from . import process
@@ -36,6 +39,7 @@ except (ImportError):
 # Constants
 #
 
+SLEEP_INTERVAL = 0.1        # FIXME: find a reasonable value
 RECURSIVE_MUTEX, SEMAPHORE = list(range(2))
 SEM_VALUE_MAX = _multiprocessing.SemLock.SEM_VALUE_MAX
 
@@ -120,17 +124,80 @@ class SemLock(object):
 # Semaphore
 #
 
-class Semaphore(SemLock):
+class Semaphore:
 
-    def __init__(self, value=1, *, ctx):
-        SemLock.__init__(self, SEMAPHORE, value, SEM_VALUE_MAX, ctx=ctx)
+    # KEYS[1] - semaphore counter key
+    # KEYS[2] - block list key
+    # ARGV[1] - block key
+    # return 1 if the semaphore was acquired, 
+    # otherwise return 0
+    LUA_ACQUIRE_SCRIPT = """
+        local new_value = redis.call('decr', KEYS[1])
+        if new_value < 0 then
+            redis.call('rpush', KEYS[2], ARGV[1])
+            return 0
+        end
+        return 1
+    """
+
+    # KEYS[1] - semaphore counter key
+    # KEYS[2] - block list key
+    # return the block key referring to the
+    # process that was released by this operation 
+    # if none was released, return 0
+    LUA_RELEASE_SCRIPT = """
+        local new_value = redis.call('incr', KEYS[1])
+        if new_value < 1 then
+            return redis.call('lpop', KEYS[2])
+        end
+        return 0
+    """
+
+    def __init__(self, value=1):
+        self._client = util.get_redis_client()
+        self._counter_handle = uuid.uuid1().hex
+        self._blocked_handle = uuid.uuid1().hex
+        self._client.incr(self._counter_handle, value)
+        self._register_scripts()
+
+    def _register_scripts(self):
+        self._lua_acquire = self._client.register_script(Semaphore.LUA_ACQUIRE_SCRIPT)
+        util.make_stateless_script(self._lua_acquire)
+
+        self._lua_release = self._client.register_script(Semaphore.LUA_RELEASE_SCRIPT)
+        util.make_stateless_script(self._lua_release)
 
     def get_value(self):
-        return self._semlock._get_value()
+        value = self._client.get(self._counter_handle)
+        return int(value)
+
+    def acquire(self):
+        keys = [self._counter_handle, self._blocked_handle]
+        blocked_key = uuid.uuid1().hex
+        res = self._lua_acquire(keys=keys,
+                                args=[blocked_key],
+                                client=self._client)
+        if res == 0:
+            self._client.blpop([blocked_key])
+        
+    def release(self):
+        keys = [self._counter_handle, self._blocked_handle]
+        res = self._lua_release(keys=keys,
+                                client=self._client)
+        if type(res) == bytes:
+            blocked_key = res.decode()
+            self._client.rpush(blocked_key, '') 
+
+    def __enter__(self):
+        self.acquire()
+        return self
+    
+    def __exit__(self, *args):
+        self.release()
 
     def __repr__(self):
         try:
-            value = self._semlock._get_value()
+            value = self.get_value()
         except Exception:
             value = 'unknown'
         return '<%s(value=%s)>' % (self.__class__.__name__, value)
@@ -139,69 +206,89 @@ class Semaphore(SemLock):
 # Bounded semaphore
 #
 
-class BoundedSemaphore(Semaphore):
+class BoundedSemaphore:
 
-    def __init__(self, value=1, *, ctx):
-        SemLock.__init__(self, SEMAPHORE, value, value, ctx=ctx)
+    def __init__(self, value=1):
+        self._client = util.get_redis_client()
+        self._name = uuid.uuid1().hex
+        self._limit = value
+        self._tokens = deque()
+
+    def acquire(self):
+        now = int(time.time() * 1e6)
+        token = str(now)
+        self._client.zadd(self._name, {token: now})
+        self._tokens.append(token)
+
+        rank = self._limit
+        while rank >= self._limit:
+            rank = self._client.zrank(self._name, token)
+            time.sleep(SLEEP_INTERVAL)
+            
+    def release(self):
+        if len(self._tokens) > 0:
+            self._client.zrem(self._name, self._tokens.popleft())
+
+    def get_value(self):
+        return self._limit - self._client.zcount(self._name, '-inf', 'inf')
+
+    def __enter__(self):
+        self.acquire()
+        return self
+
+    def __exit__(self, *args):
+        self.release()
 
     def __repr__(self):
         try:
-            value = self._semlock._get_value()
+            value = self.get_value()
         except Exception:
             value = 'unknown'
         return '<%s(value=%s, maxvalue=%s)>' % \
-               (self.__class__.__name__, value, self._semlock.maxvalue)
+               (self.__class__.__name__, value, self._limit)
 
 #
 # Non-recursive lock
 #
 
-class Lock(SemLock):
+class Lock(RedisLock):
 
-    def __init__(self, *, ctx):
-        SemLock.__init__(self, SEMAPHORE, 1, 1, ctx=ctx)
+    def __init__(self):
+        redis = util.get_redis_client()
+        name = uuid.uuid1().hex
+        super().__init__(redis, name, sleep=SLEEP_INTERVAL)
 
-    def __repr__(self):
-        try:
-            if self._semlock._is_mine():
-                name = process.current_process().name
-                if threading.current_thread().name != 'MainThread':
-                    name += '|' + threading.current_thread().name
-            elif self._semlock._get_value() == 1:
-                name = 'None'
-            elif self._semlock._count() > 0:
-                name = 'SomeOtherThread'
-            else:
-                name = 'SomeOtherProcess'
-        except Exception:
-            name = 'unknown'
-        return '<%s(owner=%s)>' % (self.__class__.__name__, name)
+    def get_value(self):
+        return 0 if self.locked() else 1
+
+    # def __repr__(self):
+
 
 #
 # Recursive lock
 #
 
-class RLock(SemLock):
+class RLock(Lock):
 
-    def __init__(self, *, ctx):
-        SemLock.__init__(self, RECURSIVE_MUTEX, 1, 1, ctx=ctx)
+    def acquire(self, *args):
+        return super().owned() or super().acquire(*args)
 
-    def __repr__(self):
-        try:
-            if self._semlock._is_mine():
-                name = process.current_process().name
-                if threading.current_thread().name != 'MainThread':
-                    name += '|' + threading.current_thread().name
-                count = self._semlock._count()
-            elif self._semlock._get_value() == 1:
-                name, count = 'None', 0
-            elif self._semlock._count() > 0:
-                name, count = 'SomeOtherThread', 'nonzero'
-            else:
-                name, count = 'SomeOtherProcess', 'nonzero'
-        except Exception:
-            name, count = 'unknown', 'unknown'
-        return '<%s(%s, %s)>' % (self.__class__.__name__, name, count)
+    # def __repr__(self):
+    #     try:
+    #         if self._semlock._is_mine():
+    #             name = process.current_process().name
+    #             if threading.current_thread().name != 'MainThread':
+    #                 name += '|' + threading.current_thread().name
+    #             count = self._semlock._count()
+    #         elif self._semlock._get_value() == 1:
+    #             name, count = 'None', 0
+    #         elif self._semlock._count() > 0:
+    #             name, count = 'SomeOtherThread', 'nonzero'
+    #         else:
+    #             name, count = 'SomeOtherProcess', 'nonzero'
+    #     except Exception:
+    #         name, count = 'unknown', 'unknown'
+    #     return '<%s(%s, %s)>' % (self.__class__.__name__, name, count)
 
 #
 # Condition variable
@@ -209,22 +296,23 @@ class RLock(SemLock):
 
 class Condition(object):
 
-    def __init__(self, lock=None, *, ctx):
-        self._lock = lock or ctx.RLock()
-        self._sleeping_count = ctx.Semaphore(0)
-        self._woken_count = ctx.Semaphore(0)
-        self._wait_semaphore = ctx.Semaphore(0)
-        self._make_methods()
+    def __init__(self, lock=None):
+        if lock:
+            self._lock = lock
+            self._client = util.get_redis_client()
+        else:
+            self._lock = Lock()
+            # help reducing the amount of open connections
+            self._client = self._lock.redis
+        
+        self._notify_handle = uuid.uuid1().hex
 
-    def __getstate__(self):
-        context.assert_spawning(self)
-        return (self._lock, self._sleeping_count,
-                self._woken_count, self._wait_semaphore)
 
-    def __setstate__(self, state):
-        (self._lock, self._sleeping_count,
-         self._woken_count, self._wait_semaphore) = state
-        self._make_methods()
+    def acquire(self):
+        return self._lock.acquire()
+
+    def release(self):
+        self._lock.release()
 
     def __enter__(self):
         return self._lock.__enter__()
@@ -232,80 +320,52 @@ class Condition(object):
     def __exit__(self, *args):
         return self._lock.__exit__(*args)
 
-    def _make_methods(self):
-        self.acquire = self._lock.acquire
-        self.release = self._lock.release
-
-    def __repr__(self):
-        try:
-            num_waiters = (self._sleeping_count._semlock._get_value() -
-                           self._woken_count._semlock._get_value())
-        except Exception:
-            num_waiters = 'unknown'
-        return '<%s(%s, %s)>' % (self.__class__.__name__, self._lock, num_waiters)
-
     def wait(self, timeout=None):
-        assert self._lock._semlock._is_mine(), \
-               'must acquire() condition before using wait()'
+        assert self._lock.owned()
 
-        # indicate that this thread is going to sleep
-        self._sleeping_count.release()
+        # Enqueue the key we will be waiting for until we are notified
+        self._wait_handle = uuid.uuid1().hex
+        res = self._client.rpush(self._notify_handle, self._wait_handle)
 
-        # release lock
-        count = self._lock._semlock._count()
-        for i in range(count):
-            self._lock.release()
+        if not res:
+            raise Exception('Condition ({}) could not enqueue \
+                waiting key'.format(self._notify_handle))
 
-        try:
-            # wait for notification or timeout
-            return self._wait_semaphore.acquire(True, timeout)
-        finally:
-            # indicate that this thread has woken
-            self._woken_count.release()
-
-            # reacquire lock
-            for i in range(count):
-                self._lock.acquire()
+        # Release lock, wait to get notified, acquire lock
+        self.release()
+        self._client.blpop([self._wait_handle], timeout)
+        self.acquire()
 
     def notify(self):
-        assert self._lock._semlock._is_mine(), 'lock is not owned'
-        assert not self._wait_semaphore.acquire(False)
+        assert self._lock.owned()
 
-        # to take account of timeouts since last notify() we subtract
-        # woken_count from sleeping_count and rezero woken_count
-        while self._woken_count.acquire(False):
-            res = self._sleeping_count.acquire(False)
-            assert res
+        wait_handle = self._client.lpop(self._notify_handle)
+        if wait_handle is not None:
+            res = self._client.rpush(wait_handle, '')
 
-        if self._sleeping_count.acquire(False): # try grabbing a sleeper
-            self._wait_semaphore.release()      # wake up one sleeper
-            self._woken_count.acquire()         # wait for the sleeper to wake
+            if not res:
+                raise Exception('Condition ({}) could not notify \
+                    one waiting process'.format(self._notify_handle))
 
-            # rezero _wait_semaphore in case a timeout just happened
-            self._wait_semaphore.acquire(False)
 
     def notify_all(self):
-        assert self._lock._semlock._is_mine(), 'lock is not owned'
-        assert not self._wait_semaphore.acquire(False)
+        assert self._lock.owned()
 
-        # to take account of timeouts since last notify*() we subtract
-        # woken_count from sleeping_count and rezero woken_count
-        while self._woken_count.acquire(False):
-            res = self._sleeping_count.acquire(False)
-            assert res
+        pipeline = self._client.pipeline(transaction=False)
+        pipeline.lrange(self._notify_handle, 0, -1)
+        pipeline.delete(self._notify_handle)
+        wait_handles, _ = pipeline.execute()
 
-        sleepers = 0
-        while self._sleeping_count.acquire(False):
-            self._wait_semaphore.release()        # wake up one sleeper
-            sleepers += 1
+        if len(wait_handles) > 0:
+            pipeline = self._client.pipeline(transaction=False)
+            for handle in wait_handles:
+                pipeline.rpush(handle, '')
+            results = pipeline.execute()
 
-        if sleepers:
-            for i in range(sleepers):
-                self._woken_count.acquire()       # wait for a sleeper to wake
+            if not all(results):
+                raise Exception('Condition ({}) could not notify \
+                    all waiting processes'.format(self._notify_handle))
 
-            # rezero wait_semaphore in case some timeouts just happened
-            while self._wait_semaphore.acquire(False):
-                pass
 
     def wait_for(self, predicate, timeout=None):
         result = predicate()
@@ -324,6 +384,14 @@ class Condition(object):
             self.wait(waittime)
             result = predicate()
         return result
+
+    # def __repr__(self):
+    #     try:
+    #         num_waiters = (self._sleeping_count._semlock._get_value() -
+    #                        self._woken_count._semlock._get_value())
+    #     except Exception:
+    #         num_waiters = 'unknown'
+    #     return '<%s(%s, %s)>' % (self.__class__.__name__, self._lock, num_waiters)
 
 #
 # Event

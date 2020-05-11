@@ -68,36 +68,31 @@ class BaseContext(object):
         from .connection import Pipe
         return Pipe(duplex)
 
-    """
+
     def Lock(self):
         '''Returns a non-recursive lock object'''
         from .synchronize import Lock
-        return Lock(ctx=self.get_context())
-    """
-    """
+        return Lock()
+
     def RLock(self):
         '''Returns a recursive lock object'''
         from .synchronize import RLock
-        return RLock(ctx=self.get_context())
-    """
-    """
+        return RLock()
+
     def Condition(self, lock=None):
         '''Returns a condition object'''
         from .synchronize import Condition
-        return Condition(lock, ctx=self.get_context())
-    """
-    """
+        return Condition(lock)
+
     def Semaphore(self, value=1):
         '''Returns a semaphore object'''
         from .synchronize import Semaphore
-        return Semaphore(value, ctx=self.get_context())
-    """
-    """
+        return Semaphore(value)
+
     def BoundedSemaphore(self, value=1):
         '''Returns a bounded semaphore object'''
         from .synchronize import BoundedSemaphore
-        return BoundedSemaphore(value, ctx=self.get_context())
-    """
+        return BoundedSemaphore(value)
     """
     def Event(self):
         '''Returns an event object'''

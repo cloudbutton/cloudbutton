@@ -452,3 +452,14 @@ def get_redis_conn_params():
 def get_redis_client():
     conn_params = get_redis_conn_params()
     return PicklableRedis(**conn_params)
+
+
+#
+# Make stateless redis Lua script (redis.client.Script)
+# Just to ensure no redis client is cache'd and avoid 
+# creating another connection when unpickling this object.
+#
+
+def make_stateless_script(script):
+    script.registered_client = None
+    return script

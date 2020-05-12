@@ -28,12 +28,10 @@ from . import util
 # Constants
 #
 
-SLEEP_INTERVAL = 0.1        # FIXME: find a reasonable value
-RECURSIVE_MUTEX, SEMAPHORE = list(range(2))
 SEM_VALUE_MAX = 2**30
 
 #
-# Base class for semaphores and mutexes;
+# Base class for semaphores and mutexes
 #
 
 class SemLock:
@@ -292,7 +290,7 @@ class Condition:
 # Event
 #
 
-class Event(object):
+class Event:
 
     def __init__(self):
         self._cond = Condition()

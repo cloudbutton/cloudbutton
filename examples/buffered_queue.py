@@ -1,11 +1,7 @@
-from cloudbutton import Process, Queue
-from cloudbutton import getpid
+from cloudbutton import Process, Queue, getpid
 import time
 
-import logging
-
-logging.basicConfig(level=logging.DEBUG)
-
+# Won't work unless pywren functions have >1 cores
 
 def f(q):
     print("I'm process", getpid())

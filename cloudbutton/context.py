@@ -107,17 +107,17 @@ class BaseContext(object):
     def Queue(self, maxsize=0):
         '''Returns a queue object'''
         from .queues import Queue
-        return Queue(maxsize, ctx=self.get_context())
+        return Queue()
 
     def JoinableQueue(self, maxsize=0):
         '''Returns a queue object'''
         from .queues import JoinableQueue
-        return JoinableQueue(maxsize, ctx=self.get_context())
+        return JoinableQueue()
 
     def SimpleQueue(self):
         '''Returns a queue object'''
         from .queues import SimpleQueue
-        return SimpleQueue(ctx=self.get_context())
+        return SimpleQueue()
 
     def Pool(self, processes=None, initializer=None, initargs=(),
              maxtasksperchild=None):

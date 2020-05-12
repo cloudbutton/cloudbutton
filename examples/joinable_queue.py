@@ -1,33 +1,21 @@
-from cloudbutton import Process, JoinableQueue
-from cloudbutton import getpid
-
+from cloudbutton import Process, JoinableQueue, getpid
+import time
 
 def worker(q):
     print("I'm process", getpid())
-    working = True
-    while working:
-        x = q.get()
-
-        # Do work that may fail
-        assert x < 10
-
-        # Confirm task
-        q.task_done()
-        
-        if x == -1:
-            working = False
+    q.get()
+    time.sleep(10)
+    q.task_done()
 
 if __name__ == '__main__':
     q = JoinableQueue()
     p = Process(target=worker, args=(q,))
     p.start()
 
-    for x in range(10): 
-        q.put(x)
+    q.put('work')
 
-    # uncomment to hang on the q.join
-    #q.put(11)  
+    print('Waiting until all tasks are completed...')
     q.join()
+    print('All tasks have been confirmed')
 
-    q.put(-1) # end loop
     p.join()

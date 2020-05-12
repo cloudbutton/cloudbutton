@@ -1,6 +1,4 @@
-#from multiprocessing import Process, Queue
-from cloudbutton import Process, SimpleQueue
-from cloudbutton import getpid
+from cloudbutton import Process, SimpleQueue, getpid
 
 
 def f(q):

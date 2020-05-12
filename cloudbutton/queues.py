@@ -260,10 +260,10 @@ class SimpleQueue(object):
         return False
 
     def get_nowait(self):
-        return self.get(False)
+        return self.get()
 
     def put_nowait(self, obj):
-        return self.put(obj, False)
+        return self.put(obj)
 
     def close(self):
         if not self._closed:

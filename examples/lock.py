@@ -1,23 +1,23 @@
-from cloudbutton import Pool, Semaphore, SimpleQueue, getpid
+from cloudbutton import Pool, Lock, SimpleQueue, getpid
 import time
 
-def f(sem, q):
-    with sem:
+def f(lock, q):
+    with lock:
         pid = getpid()
         ts = time.time()
         msg = 'process: {} - timestamp: {}'.format(pid, ts)
         q.put(msg)
-        time.sleep(3)
+        time.sleep(1)
 
 if __name__ == "__main__":
-    # inital value to 3
-    sem = Semaphore(value=3)
+    lock = Lock()
     q = SimpleQueue()
 
-    n = 6
+    n = 3
     with Pool() as p:
-        p.map_async(f, [[sem, q]] * n)
+        p.map_async(f, [[lock, q]] * n)
 
     for _ in range(n):
         print(q.get())
+    
 

@@ -1,10 +1,11 @@
-from cloudbutton import Process, Queue
-from cloudbutton import getpid
+from cloudbutton import Process, Queue, getpid
+import time
 
 
 def f(q):
     print("I'm process", getpid())
     q.put([42, None, 'hello'])
+    time.sleep(5)
 
 
 if __name__ == '__main__':

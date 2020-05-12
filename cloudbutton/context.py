@@ -68,63 +68,56 @@ class BaseContext(object):
         from .connection import Pipe
         return Pipe(duplex)
 
-    """
+
     def Lock(self):
         '''Returns a non-recursive lock object'''
         from .synchronize import Lock
-        return Lock(ctx=self.get_context())
-    """
-    """
+        return Lock()
+
     def RLock(self):
         '''Returns a recursive lock object'''
         from .synchronize import RLock
-        return RLock(ctx=self.get_context())
-    """
-    """
+        return RLock()
+
     def Condition(self, lock=None):
         '''Returns a condition object'''
         from .synchronize import Condition
-        return Condition(lock, ctx=self.get_context())
-    """
-    """
+        return Condition(lock)
+
     def Semaphore(self, value=1):
         '''Returns a semaphore object'''
         from .synchronize import Semaphore
-        return Semaphore(value, ctx=self.get_context())
-    """
-    """
+        return Semaphore(value)
+
     def BoundedSemaphore(self, value=1):
         '''Returns a bounded semaphore object'''
         from .synchronize import BoundedSemaphore
-        return BoundedSemaphore(value, ctx=self.get_context())
-    """
-    """
+        return BoundedSemaphore(value)
+        
     def Event(self):
         '''Returns an event object'''
         from .synchronize import Event
-        return Event(ctx=self.get_context())
-    """
-    """
+        return Event()
+        
     def Barrier(self, parties, action=None, timeout=None):
         '''Returns a barrier object'''
         from .synchronize import Barrier
-        return Barrier(parties, action, timeout, ctx=self.get_context())
-    """
+        return Barrier(parties, action, timeout)
 
     def Queue(self, maxsize=0):
         '''Returns a queue object'''
         from .queues import Queue
-        return Queue(maxsize, ctx=self.get_context())
+        return Queue()
 
     def JoinableQueue(self, maxsize=0):
         '''Returns a queue object'''
         from .queues import JoinableQueue
-        return JoinableQueue(maxsize, ctx=self.get_context())
+        return JoinableQueue()
 
     def SimpleQueue(self):
         '''Returns a queue object'''
         from .queues import SimpleQueue
-        return SimpleQueue(ctx=self.get_context())
+        return SimpleQueue()
 
     def Pool(self, processes=None, initializer=None, initargs=(),
              maxtasksperchild=None):

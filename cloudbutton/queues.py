@@ -23,6 +23,7 @@ import _multiprocessing
 
 from . import connection
 from . import context
+from . import synchronize
 _ForkingPickler = context.reduction.ForkingPickler
 
 from .util import debug, info, Finalize, register_after_fork, is_exiting
@@ -31,9 +32,9 @@ from .util import debug, info, Finalize, register_after_fork, is_exiting
 # Queue type using a pipe, buffer and thread
 #
 
-class Queue(object):
+class Queue:
 
-    def __init__(self, maxsize=0, *, ctx):
+    def __init__(self):
         self._reader, self._writer = connection.Pipe(duplex=False)
         self._opid = os.getpid()
         
@@ -41,9 +42,6 @@ class Queue(object):
         self._ignore_epipe = False
 
         self._after_fork()
-
-        # if sys.platform != 'win32':
-        #     register_after_fork(self, Queue._after_fork)
 
     def __getstate__(self):
         return (self._ignore_epipe,  self._reader, 
@@ -86,7 +84,7 @@ class Queue(object):
             elif not self._poll():
                 raise Empty
             res = self._recv_bytes()
-        # unserialize the data after having released the lock
+
         return _ForkingPickler.loads(res)
 
     def qsize(self):
@@ -224,74 +222,71 @@ _sentinel = object()
 
 
 #
-# A queue type which also supports join() and task_done() methods
-#
-
-class JoinableQueue(Queue):
-
-    def __init__(self, maxsize=0, *, ctx):
-        Queue.__init__(self, maxsize, ctx=ctx)
-        self._unfinished_tasks, _ = ctx.Pipe(duplex=True)
-
-    def __getstate__(self):
-        return Queue.__getstate__(self) + (self._unfinished_tasks,)
-
-    def __setstate__(self, state):
-        Queue.__setstate__(self, state[:-1])
-        self._unfinished_tasks = state[-1]
-
-    def put(self, obj, block=True, timeout=None):
-        assert not self._closed
-
-        with self._notempty:
-            if self._thread is None:
-                self._start_thread()
-            self._buffer.append(obj)
-            self._unfinished_tasks.send_bytes(b'unfinised_task')
-            self._notempty.notify()
-
-    def task_done(self):
-        length = len(self._unfinished_tasks)
-        if length == 0:
-            raise ValueError('task_done() called too many times')
-
-        self._unfinished_tasks._recv_bytes()
-
-    def join(self):
-        while 1:
-            remaining_tasks = len(self._unfinished_tasks)
-            if remaining_tasks > 0:
-                sleep_for = 0.01 * remaining_tasks \
-                        if 0.01 * remaining_tasks < 0.5 else 0.5
-                time.sleep(sleep_for)
-            else:
-                break
-
-
-#
 # Simplified Queue type
 #
 
-class SimpleQueue(object):
+class SimpleQueue:
 
-    def __init__(self, *, ctx):
+    def __init__(self):
         self._reader, self._writer = connection.Pipe(duplex=False)
-        self._poll = self._reader.poll
+        self._closed = False
 
-    def empty(self):
-        return not self._poll()
+    def _poll(self, timeout=0.0):
+        return self._reader.poll(0.0)
 
-    def __getstate__(self):
-        return (self._reader, self._writer)
-
-    def __setstate__(self, state):
-        (self._reader, self._writer) = state
-        self._poll = self._reader.poll
+    def put(self, obj):
+        assert not self._closed
+        obj = _ForkingPickler.dumps(obj)
+        self._writer.send_bytes(obj)
 
     def get(self):
         res = self._reader.recv_bytes()
         return _ForkingPickler.loads(res)
 
+    def qsize(self):
+        return len(self._reader)
+
+    def empty(self):
+        return not self._poll()
+
+    def full(self):
+        return False
+
+    def get_nowait(self):
+        return self.get()
+
+    def put_nowait(self, obj):
+        return self.put(obj)
+
+    def close(self):
+        if not self._closed:
+            self._reader.close()
+            self._closed = True
+
+#
+# A queue type which also supports join() and task_done() methods
+#
+
+class JoinableQueue(SimpleQueue):
+
+    def __init__(self):
+        super().__init__()
+        self._unfinished_tasks = synchronize.Semaphore(0)
+        self._cond = synchronize.Condition()
+
     def put(self, obj):
-        obj = _ForkingPickler.dumps(obj)
-        self._writer.send_bytes(obj)
+        with self._cond:
+            super().put(obj)
+            self._unfinished_tasks.release()
+
+    def task_done(self):
+        with self._cond:
+            if not self._unfinished_tasks.acquire(False):
+                raise ValueError('task_done() called too many times')
+            if self._unfinished_tasks.get_value() == 0:
+                self._cond.notify_all()
+
+    def join(self):
+        with self._cond:
+            if self._unfinished_tasks.get_value() != 0:
+                self._cond.wait()

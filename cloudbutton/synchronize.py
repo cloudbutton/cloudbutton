@@ -14,12 +14,8 @@ __all__ = [
 
 import threading
 import sys
-import tempfile
-import _multiprocessing
 import time
 import uuid
-from collections import deque
-from redis.lock import Lock as RedisLock
 
 from . import context
 from . import process

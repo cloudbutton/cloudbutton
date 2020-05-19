@@ -390,18 +390,124 @@ class ListProxy(BaseProxy):
     def insert(self, index, obj):
         raise NotImplementedError
 
+    def tolist(self):
+        serialized = self._client.lrange(self._oid, 0, -1)
+        unserialized = [self._pickler.loads(obj) for obj in serialized]
+        return unserialized
 
 class DictProxy(BaseProxy):
-    pass
 
-# DictProxy = MakeProxyType('DictProxy', (
-#     '__contains__', '__delitem__', '__getitem__', '__iter__', '__len__',
-#     '__setitem__', 'clear', 'copy', 'get', 'has_key', 'items',
-#     'keys', 'pop', 'popitem', 'setdefault', 'update', 'values'
-#     ))
-# DictProxy._method_to_typeid_ = {
-#     '__iter__': 'Iterator',
-#     }
+    def __init__(self, *args, **kwargs):
+        super().__init__('dict')
+        self.update(*args, **kwargs)
+
+    def __setitem__(self, k, v):
+        serialized = self._pickler.dumps(v)
+        self._client.hset(self._oid, k, serialized)
+
+    def __getitem__(self, k):
+        serialized = self._client.hget(self._oid, k)
+        if serialized is None:
+            raise KeyError(k)
+
+        unserialized = self._pickler.loads(serialized)
+        return unserialized
+        
+    def __delitem__(self, k):
+        res = self._client.hdel(self._oid, k)   
+        if res == 0:
+            raise KeyError(k)
+
+    def __contains__(self, k):
+        return self._client.hexists(self._oid, k)
+
+    def __len__(self):
+        return self._client.hlen(self._oid)
+
+    def __iter__(self):
+        return iter(self.keys())
+
+    def get(self, k, default=None):
+        try:
+            v = self.__getitem__(k)
+        except KeyError:
+            return default
+        else:
+            return v
+
+    def pop(self, k, default=None):
+        try:
+            v = self.__getitem__(k)
+        except KeyError:
+            return default
+        else:
+            self.__delitem__(k)
+            return v
+
+    def popitem(self):
+        try:
+            key = self.keys()[0]
+            item = (key, self.__getitem__(key))
+            self.__delitem__(key)
+            return item
+        except IndexError:
+            raise KeyError('popitem(): dictionary is empty')
+
+    def setdefault(self, k, default=None):
+        serialized = self._pickler.dumps(default)
+        res = self._client.hsetnx(self._oid, k, serialized)
+        if res == 1:
+            return default
+        else:
+            return self.__getitem__(k)
+
+    def update(self, *args, **kwargs):
+        items = []
+        if args is not ():
+            if len(args) > 1:
+                raise TypeError('update expected at most'
+                    ' 1 arguments, got {}'.format(len(args)))
+            try:
+                for k in args[0].keys():
+                    items.extend((k, self._pickler.dumps(args[0][k])))
+            except:
+                try:
+                    items = []  # just in case
+                    for k, v in args[0]:
+                        items.extend((k, self._pickler.dumps(v)))
+                except:
+                    raise TypeError(type(args[0]))
+
+        for k in kwargs.keys():
+            items.extend((k, self._pickler.dumps(kwargs[k])))
+        self._client.execute_command('HMSET', self._oid, *items)
+
+    def keys(self):
+        return [k.decode() for k in self._client.hkeys(self._oid)]
+
+    def values(self):
+        return [self._pickler.loads(v) for v in self._client.hvals(self._oid)]
+
+    def items(self):
+        raw_dict = self._client.hgetall(self._oid)
+        items = []
+        for k, v in raw_dict.items():
+            items.append((k.decode(), self._pickler.loads(v)))
+        return items
+
+    def clear(self):
+        self._client.delete(self._oid)
+
+    def copy(self):
+        # TODO: use lua script
+        return type(self)(self.items())
+
+    def todict(self):
+        raw_dict = self._client.hgetall(self._oid)
+        py_dict = {}
+        for k, v in raw_dict.items():
+            py_dict[k.decode()] = self._pickler.loads(v)
+        return py_dict
 
 
 class Namespace(object):
@@ -435,20 +541,6 @@ def Array(typecode, sequence, lock=True):
 # Proxy types used by SyncManager
 #
 
-class IteratorProxy(BaseProxy):
-    _exposed_ = ('__next__', 'send', 'throw', 'close')
-    def __iter__(self):
-        return self
-    def __next__(self, *args):
-        return self._callmethod('__next__', args)
-    def send(self, *args):
-        return self._callmethod('send', args)
-    def throw(self, *args):
-        return self._callmethod('throw', args)
-    def close(self, *args):
-        return self._callmethod('close', args)
-
-
 class NamespaceProxy(BaseProxy):
     _exposed_ = ('__getattribute__', '__setattr__', '__delattr__')
     def __getattr__(self, key):
@@ -477,52 +569,11 @@ class ValueProxy(BaseProxy):
     value = property(get, set)
 
 
-# BaseListProxy = MakeProxyType('BaseListProxy', (
-#     '__add__', '__contains__', '__delitem__', '__getitem__', '__len__',
-#     '__mul__', '__reversed__', '__rmul__', '__setitem__',
-#     'append', 'count', 'extend', 'index', 'insert', 'pop', 'remove',
-#     'reverse', 'sort', '__imul__'
-#     ))
-# class ListProxy(BaseListProxy):
-#     def __iadd__(self, value):
-#         self._callmethod('extend', (value,))
-#         return self
-#     def __imul__(self, value):
-#         self._callmethod('__imul__', (value,))
-#         return self
-
-
-# DictProxy = MakeProxyType('DictProxy', (
-#     '__contains__', '__delitem__', '__getitem__', '__iter__', '__len__',
-#     '__setitem__', 'clear', 'copy', 'get', 'has_key', 'items',
-#     'keys', 'pop', 'popitem', 'setdefault', 'update', 'values'
-#     ))
-# DictProxy._method_to_typeid_ = {
-#     '__iter__': 'Iterator',
-#     }
-
 
 # ArrayProxy = MakeProxyType('ArrayProxy', (
 #     '__len__', '__getitem__', '__setitem__'
 #     ))
 
-
-# BasePoolProxy = MakeProxyType('PoolProxy', (
-#     'apply', 'apply_async', 'close', 'imap', 'imap_unordered', 'join',
-#     'map', 'map_async', 'starmap', 'starmap_async', 'terminate',
-#     ))
-# BasePoolProxy._method_to_typeid_ = {
-#     'apply_async': 'AsyncResult',
-#     'map_async': 'AsyncResult',
-#     'starmap_async': 'AsyncResult',
-#     'imap': 'Iterator',
-#     'imap_unordered': 'Iterator'
-#     }
-# class PoolProxy(BasePoolProxy):
-#     def __enter__(self):
-#         return self
-#     def __exit__(self, exc_type, exc_val, exc_tb):
-#         self.terminate()
 
 #
 # Definition of SyncManager

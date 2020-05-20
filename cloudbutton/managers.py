@@ -147,8 +147,8 @@ class BaseProxy(object):
         self._oid = '{}-{}'.format(typeid, util.get_uuid())
         # reference counter key
         self._rck = '{}-{}'.format('ref', self._oid)
-        self._pickler = pickler if serializer is None else serializer
 
+        self._pickler = pickler if serializer is None else serializer
         self._client = util.get_redis_client()
         self._incref()
 
@@ -173,7 +173,7 @@ class BaseProxy(object):
     def _decref(self):
         return int(self._client.decr(self._rck, 1))
 
-    def refcount(self):
+    def _refcount(self):
         return int(self._client.get(self._rck))
 
     def __del__(self):
@@ -183,7 +183,7 @@ class BaseProxy(object):
 
     def __repr__(self):
         return '<%s object, typeid=%r, key=%r, refcount=%r>' % \
-               (type(self).__name__, self._typeid, self._oid, self.refcount())
+               (type(self).__name__, self._typeid, self._oid, self._refcount())
 
     def __str__(self):
         '''
@@ -510,65 +510,49 @@ class DictProxy(BaseProxy):
         return py_dict
 
 
-class Namespace(object):
-    def __init__(self, **kwds):
-        self.__dict__.update(kwds)
-    def __repr__(self):
-        items = list(self.__dict__.items())
-        temp = []
-        for name, value in items:
-            if not name.startswith('_'):
-                temp.append('%s=%r' % (name, value))
-        temp.sort()
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(temp))
-
-class Value(object):
-    def __init__(self, typecode, value, lock=True):
-        self._typecode = typecode
-        self._value = value
-    def get(self):
-        return self._value
-    def set(self, value):
-        self._value = value
-    def __repr__(self):
-        return '%s(%r, %r)'%(type(self).__name__, self._typecode, self._value)
-    value = property(get, set)
-
-def Array(typecode, sequence, lock=True):
-    return array.array(typecode, sequence)
-
-#
-# Proxy types used by SyncManager
-#
-
 class NamespaceProxy(BaseProxy):
-    _exposed_ = ('__getattribute__', '__setattr__', '__delattr__')
-    def __getattr__(self, key):
-        if key[0] == '_':
-            return object.__getattribute__(self, key)
-        callmethod = object.__getattribute__(self, '_callmethod')
-        return callmethod('__getattribute__', (key,))
-    def __setattr__(self, key, value):
-        if key[0] == '_':
-            return object.__setattr__(self, key, value)
-        callmethod = object.__getattribute__(self, '_callmethod')
-        return callmethod('__setattr__', (key, value))
-    def __delattr__(self, key):
-        if key[0] == '_':
-            return object.__delattr__(self, key)
-        callmethod = object.__getattribute__(self, '_callmethod')
-        return callmethod('__delattr__', (key,))
+    def __init__(self, **kwargs):
+        super().__init__('Namespace')
+        DictProxy.update(self, **kwargs)
 
+    def __getattr__(self, k):
+        if k[0] == '_':
+            return object.__getattribute__(self, k)
+        try:
+            return DictProxy.__getitem__(self, k)
+        except KeyError:
+            raise AttributeError(k)
+
+    def __setattr__(self, k, v):
+        if k[0] == '_':
+            return object.__setattr__(self, k, v)
+        DictProxy.__setitem__(self, k, v)
+
+    def __delattr__(self, k):
+        if k[0] == '_':
+            return object.__delattr__(self, k)
+        try:
+            return DictProxy.__delitem__(self, k)
+        except KeyError:
+            raise AttributeError(k)
 
 class ValueProxy(BaseProxy):
-    _exposed_ = ('get', 'set')
+    def __init__(self, typecode, value, lock=True):
+        super().__init__('Value({})'.format(typecode))
+        self.set(value)
+
     def get(self):
-        return self._callmethod('get')
+        serialized = self._client.get(self._oid)
+        return self._pickler.loads(serialized)
+
     def set(self, value):
-        return self._callmethod('set', (value,))
+        serialized = self._pickler.dumps(value)
+        self._client.set(self._oid, serialized)
+
     value = property(get, set)
 
-
+def ArrayProxy(typecode, sequence, lock=True):
+    raise NotImplementedError
 
 # ArrayProxy = MakeProxyType('ArrayProxy', (
 #     '__len__', '__getitem__', '__setitem__'
@@ -603,10 +587,6 @@ SyncManager.register('Barrier', synchronize.Barrier)
 SyncManager.register('Pool', pool.Pool)
 SyncManager.register('list', ListProxy)
 SyncManager.register('dict', DictProxy)
-# SyncManager.register('Value', Value, ValueProxy)
-# SyncManager.register('Array', Array, ArrayProxy)
-# SyncManager.register('Namespace', Namespace, NamespaceProxy)
-
-# # types returned by methods of PoolProxy
-# SyncManager.register('Iterator', proxytype=IteratorProxy, create_method=False)
-# SyncManager.register('AsyncResult', create_method=False)
+SyncManager.register('Value', ValueProxy)
+SyncManager.register('Namespace', NamespaceProxy)
+SyncManager.register('Array', ArrayProxy)

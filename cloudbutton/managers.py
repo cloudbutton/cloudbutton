@@ -21,33 +21,9 @@ from . import util
 from . import synchronize
 from . import context
 from . import queues
+import pickle as pickler
 import redis
 from copy import deepcopy
-
-pickler = context.reduction.ForkingPickler
-
-#
-# Type for identifying shared objects
-#
-
-class Token(object):
-    '''
-    Type to uniquely indentify a shared object
-    '''
-    __slots__ = ('typeid', 'address', 'id')
-
-    def __init__(self, typeid, address, id):
-        (self.typeid, self.address, self.id) = (typeid, address, id)
-
-    def __getstate__(self):
-        return (self.typeid, self.address, self.id)
-
-    def __setstate__(self, state):
-        (self.typeid, self.address, self.id) = state
-
-    def __repr__(self):
-        return '%s(typeid=%r, address=%r, id=%r)' % \
-               (self.__class__.__name__, self.typeid, self.address, self.id)
 
 
 #
@@ -213,8 +189,8 @@ class ListProxy(BaseProxy):
         end
     """
 
-    def __init__(self, iterable=None, serializer=None):
-        super().__init__('list', serializer)
+    def __init__(self, iterable=None):
+        super().__init__('list')
         self._lua_extend_list = self._client.register_script(ListProxy.LUA_EXTEND_LIST_SCRIPT)
         util.make_stateless_script(self._lua_extend_list)
 
@@ -279,7 +255,7 @@ class ListProxy(BaseProxy):
             serialized = self._client.lrange(self._oid, start, end)
             unserialized = [self._pickler.loads(obj) for obj in serialized]
             #return unserialized
-            return type(self)(unserialized, self._pickler)
+            return type(self)(unserialized)
         else:
             raise TypeError('list indices must be integers '
                 'or slices, not {}'.format(type(i)))
@@ -310,7 +286,7 @@ class ListProxy(BaseProxy):
             raise NotImplementedError
 
     def __deepcopy__(self, memo):
-        selfcopy = type(self)(serializer=self._pickler)
+        selfcopy = type(self)()
 
         # We should test the DUMP/RESTORE strategy 
         # although it has serialization costs
@@ -336,9 +312,9 @@ class ListProxy(BaseProxy):
             raise TypeError("TypeError: can't multiply sequence"
                     " by non-int of type {}". format(type(n)))
         if n < 1:
-            return type(self)(serializer=self._pickler) # FIXME: return [] ?
+            return type(self)() # FIXME: return [] ?
         else:
-            newlist = type(self)(serializer=self._pickler)
+            newlist = type(self)()
             newlist._extend_same_type(self, repeat=n)
             return newlist
 
@@ -394,6 +370,7 @@ class ListProxy(BaseProxy):
         serialized = self._client.lrange(self._oid, 0, -1)
         unserialized = [self._pickler.loads(obj) for obj in serialized]
         return unserialized
+
 
 class DictProxy(BaseProxy):
 
@@ -480,7 +457,9 @@ class DictProxy(BaseProxy):
 
         for k in kwargs.keys():
             items.extend((k, self._pickler.dumps(kwargs[k])))
-        self._client.execute_command('HMSET', self._oid, *items)
+        
+        if len(items) > 0:
+            self._client.execute_command('HMSET', self._oid, *items)
 
     def keys(self):
         return [k.decode() for k in self._client.hkeys(self._oid)]
@@ -535,6 +514,9 @@ class NamespaceProxy(BaseProxy):
             return DictProxy.__delitem__(self, k)
         except KeyError:
             raise AttributeError(k)
+
+    def _todict(self):
+        return DictProxy.todict(self)
 
 class ValueProxy(BaseProxy):
     def __init__(self, typecode, value, lock=True):

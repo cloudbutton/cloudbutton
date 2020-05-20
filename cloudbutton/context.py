@@ -51,17 +51,13 @@ class BaseContext(object):
             return num
     """
 
-    """
     def Manager(self):
         '''Returns a manager associated with a running server process
         The managers methods such as `Lock()`, `Condition()` and `Queue()`
         can be used to create shared objects.
         '''
         from .managers import SyncManager
-        m = SyncManager(ctx=self.get_context())
-        m.start()
-        return m
-    """
+        return SyncManager()
 
     def Pipe(self, duplex=True):
         '''Returns two connection object connected by a pipe'''

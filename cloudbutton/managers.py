@@ -25,6 +25,28 @@ import pickle as pickler
 import redis
 from copy import deepcopy
 
+#
+# Type for identifying shared objects
+#
+
+class Token(object):
+    '''
+    Type to uniquely indentify a shared object
+    '''
+    __slots__ = ('typeid', 'address', 'id')
+
+    def __init__(self, typeid, address, id):
+        (self.typeid, self.address, self.id) = (typeid, address, id)
+
+    def __getstate__(self):
+        return (self.typeid, self.address, self.id)
+
+    def __setstate__(self, state):
+        (self.typeid, self.address, self.id) = state
+
+    def __repr__(self):
+        return '%s(typeid=%r, address=%r, id=%r)' % \
+               (self.__class__.__name__, self.typeid, self.address, self.id)
 
 #
 # Helper functions
@@ -518,6 +540,7 @@ class NamespaceProxy(BaseProxy):
     def _todict(self):
         return DictProxy.todict(self)
 
+
 class ValueProxy(BaseProxy):
     def __init__(self, typecode, value, lock=True):
         super().__init__('Value({})'.format(typecode))
@@ -532,6 +555,7 @@ class ValueProxy(BaseProxy):
         self._client.set(self._oid, serialized)
 
     value = property(get, set)
+
 
 def ArrayProxy(typecode, sequence, lock=True):
     raise NotImplementedError

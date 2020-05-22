@@ -36,8 +36,19 @@ except ImportError:
     _winapi = None
 
 #
+# Constants
 #
-#
+
+#           Handle prefixes
+# Separated keys/channels so that a given
+# connection cannot read its own messages
+REDIS_LIST_CONN = 'listconn'
+REDIS_LIST_CONN_A = REDIS_LIST_CONN + '-a-'
+REDIS_LIST_CONN_B = REDIS_LIST_CONN + '-b-'
+REDIS_PUBSUB_CONN = 'pubsubconn'
+REDIS_PUBSUB_CONN_A = REDIS_PUBSUB_CONN + '-a-'
+REDIS_PUBSUB_CONN_B = REDIS_PUBSUB_CONN + '-b-'
+
 
 BUFSIZE = 8192
 # A very generous timeout when it comes to local connections...
@@ -68,6 +79,41 @@ def _check_timeout(t):
 #
 #
 
+def get_handle_pair(conn_type=REDIS_LIST_CONN, from_id=None):
+    if from_id is None:
+        id = util.get_uuid()
+    else:
+        id = from_id
+    if conn_type == REDIS_LIST_CONN:
+        return (REDIS_LIST_CONN_A + id,
+                REDIS_LIST_CONN_B + id)
+    elif conn_type == REDIS_PUBSUB_CONN:
+        return (REDIS_PUBSUB_CONN_A + id,
+                REDIS_PUBSUB_CONN_B + id)
+
+def get_subhandle(handle):
+    if handle.startswith(REDIS_LIST_CONN_A):
+        return REDIS_LIST_CONN_B + handle[len(REDIS_LIST_CONN_A):]
+
+    elif handle.startswith(REDIS_LIST_CONN_B):
+        return REDIS_LIST_CONN_A + handle[len(REDIS_LIST_CONN_B):]
+
+    elif handle.startswith(REDIS_PUBSUB_CONN_A):
+        return REDIS_PUBSUB_CONN_B + handle[len(REDIS_PUBSUB_CONN_A):]
+
+    elif handle.startswith(REDIS_PUBSUB_CONN_B):
+        return REDIS_PUBSUB_CONN_A + handle[len(REDIS_PUBSUB_CONN_B):]
+    raise ValueError("bad handle prefix '{}' - see cloudbutton.connection"
+        " handle prefixes".format(handle))
+
+def _validate_address(address):
+    if not isinstance(address, str):
+        raise ValueError("address must be a str, got {}"\
+            .format(type(address)))
+    if not address.startswith((REDIS_LIST_CONN, REDIS_PUBSUB_CONN)):
+        raise ValueError("address '{}' is not of any known type ({}, {})"\
+            .format(address, REDIS_LIST_CONN, REDIS_PUBSUB_CONN))
+
 def arbitrary_address(family):
     '''
     Return an arbitrary free address for the given family
@@ -79,6 +125,8 @@ def arbitrary_address(family):
     elif family == 'AF_PIPE':
         return tempfile.mktemp(prefix=r'\\.\pipe\pyc-%d-%d-' %
                                (os.getpid(), next(_mmap_counter)), dir="")
+    elif family == 'AF_REDIS':
+        return 'listener-' + util.get_uuid()
     else:
         raise ValueError('unrecognized family')
 
@@ -117,12 +165,10 @@ class _ConnectionBase:
     _handle = None
 
     def __init__(self, handle, readable=True, writable=True):
-        handle = handle.__index__()
-        if handle < 0:
-            raise ValueError("invalid handle")
         if not readable and not writable:
             raise ValueError(
                 "at least one of `readable` and `writable` must be True")
+        self._client = util.get_redis_client()
         self._handle = handle
         self._readable = readable
         self._writable = writable
@@ -265,95 +311,40 @@ class _ConnectionBase:
         self.close()
 
 
-if _winapi:
-
-    class PipeConnection(_ConnectionBase):
-        """
-        Connection class based on a Windows named pipe.
-        Overlapped I/O is used, so the handles must have been created
-        with FILE_FLAG_OVERLAPPED.
-        """
-        _got_empty_message = False
-
-        def _close(self, _CloseHandle=_winapi.CloseHandle):
-            _CloseHandle(self._handle)
-
-        def _send_bytes(self, buf):
-            ov, err = _winapi.WriteFile(self._handle, buf, overlapped=True)
-            try:
-                if err == _winapi.ERROR_IO_PENDING:
-                    waitres = _winapi.WaitForMultipleObjects(
-                        [ov.event], False, INFINITE)
-                    assert waitres == WAIT_OBJECT_0
-            except:
-                ov.cancel()
-                raise
-            finally:
-                nwritten, err = ov.GetOverlappedResult(True)
-            assert err == 0
-            assert nwritten == len(buf)
-
-        def _recv_bytes(self, maxsize=None):
-            if self._got_empty_message:
-                self._got_empty_message = False
-                return io.BytesIO()
-            else:
-                bsize = 128 if maxsize is None else min(maxsize, 128)
-                try:
-                    ov, err = _winapi.ReadFile(self._handle, bsize,
-                                                overlapped=True)
-                    try:
-                        if err == _winapi.ERROR_IO_PENDING:
-                            waitres = _winapi.WaitForMultipleObjects(
-                                [ov.event], False, INFINITE)
-                            assert waitres == WAIT_OBJECT_0
-                    except:
-                        ov.cancel()
-                        raise
-                    finally:
-                        nread, err = ov.GetOverlappedResult(True)
-                        if err == 0:
-                            f = io.BytesIO()
-                            f.write(ov.getbuffer())
-                            return f
-                        elif err == _winapi.ERROR_MORE_DATA:
-                            return self._get_more_data(ov, maxsize)
-                except OSError as e:
-                    if e.winerror == _winapi.ERROR_BROKEN_PIPE:
-                        raise EOFError
-                    else:
-                        raise
-            raise RuntimeError("shouldn't get here; expected KeyboardInterrupt")
-
-        def _poll(self, timeout):
-            if (self._got_empty_message or
-                        _winapi.PeekNamedPipe(self._handle)[0] != 0):
-                return True
-            return bool(wait([self], timeout))
-
-        def _get_more_data(self, ov, maxsize):
-            buf = ov.getbuffer()
-            f = io.BytesIO()
-            f.write(buf)
-            left = _winapi.PeekNamedPipe(self._handle)[1]
-            assert left > 0
-            if maxsize is not None and len(buf) + left > maxsize:
-                self._bad_message_length()
-            ov, err = _winapi.ReadFile(self._handle, left, overlapped=True)
-            rbytes, err = ov.GetOverlappedResult(True)
-            assert err == 0
-            assert rbytes == left
-            f.write(ov.getbuffer())
-            return f
-
-
 class Connection(_ConnectionBase):
     """
     Connection class for Redis.
     """
+    _write = None
+    _read = None
+
     def __init__(self, handle, readable=True, writable=True):
         super().__init__(handle, readable, writable)
-        self._client = util.get_redis_client()
+        self._subhandle = get_subhandle(handle)
+        self._connect()
+
+    def _connect(self):
+        if self._handle.startswith(REDIS_LIST_CONN):
+            self._read = self._listread
+            self._write = self._listwrite
+
+        elif self._handle.startswith(REDIS_PUBSUB_CONN):
+            self._read = self._channelread
+            self._write = self._channelwrite
+            self._pubsub = self._client.pubsub()
+            self._pubsub.subscribe(self._subhandle)
+            self._gen = self._pubsub.listen()
+            # ignore first message (subscribe message)
+            next(self._gen)
+
+    def __getstate__(self):
+        return (self._client, self._handle, self._subhandle,
+            self._readable, self._writable)    
+
+    def __setstate__(self, state):
+        (self._client, self._handle, self._subhandle,
+            self._readable, self._writable) = state
+        self._connect()
 
     def __len__(self):
         return self._client.llen(self._handle)
@@ -363,53 +354,44 @@ class Connection(_ConnectionBase):
         if hasattr(self._client, 'close'):
             self._client.close()
 
-    def _write(self, handle, buf):
+    def _listwrite(self, handle, buf):
         return self._client.rpush(handle, buf)
 
-    def _read(self, handle):
+    def _listread(self, handle):
         _, v = self._client.blpop([handle])
         return v
 
+    def _channelwrite(self, handle, buf):
+        return self._client.publish(handle, buf)
+
+    def _channelread(self, handle):
+        msg = next(self._gen)
+        return msg['data']
+
     def _send(self, buf, write=None):
-        raise Exception('Connection._send() on Redis')
-        remaining = len(buf)
-        while True:
-            n = write(self._handle, buf)
-            remaining -= n
-            if remaining == 0:
-                break
-            buf = buf[n:]
+        raise NotImplementedError('Connection._send() on Redis')
 
     def _recv(self, size, read=None):
-        raise Exception('Connection._recv() on Redis')
-        buf = io.BytesIO()
-        handle = self._handle
-        remaining = size
-        while remaining > 0:
-            chunk = read(handle, remaining)
-            n = len(chunk)
-            if n == 0:
-                if remaining == size:
-                    raise EOFError
-                else:
-                    raise OSError("got end of file during message")
-            buf.write(chunk)
-            remaining -= n
-        return buf
+        raise NotImplementedError('Connection._recv() on Redis')
 
     def _send_bytes(self, buf):
         self._write(self._handle, buf.tobytes())
 
     def _recv_bytes(self, maxsize=None):
         buf = io.BytesIO()
-        chunk = self._read(self._handle)
+        chunk = self._read(self._subhandle)
         buf.write(chunk)
         return buf
 
     def _poll(self, timeout):
-        r = wait([(self._client, self._handle)], timeout)
+        if hasattr(self, '_pubsub'):
+            r = wait([(self._pubsub, self._subhandle)], timeout)
+        else:
+            r = wait([(self._client, self._subhandle)], timeout)
         return bool(r)
 
+
+PipeConnection = Connection
 
 #
 # Public functions
@@ -423,15 +405,10 @@ class Listener(object):
     connections, or for a Windows named pipe.
     '''
     def __init__(self, address=None, family=None, backlog=1, authkey=None):
-        family = family or (address and address_type(address)) \
-                 or default_family
+        family = 'AF_REDIS'
         address = address or arbitrary_address(family)
 
-        _validate_family(family)
-        if family == 'AF_PIPE':
-            self._listener = PipeListener(address, backlog)
-        else:
-            self._listener = SocketListener(address, family, backlog)
+        self._listener = SocketListener(address, family, backlog)
 
         if authkey is not None and not isinstance(authkey, bytes):
             raise TypeError('authkey should be a byte string')
@@ -475,12 +452,7 @@ def Client(address, family=None, authkey=None):
     '''
     Returns a connection to the address of a `Listener`
     '''
-    family = family or address_type(address)
-    _validate_family(family)
-    if family == 'AF_PIPE':
-        c = PipeClient(address)
-    else:
-        c = SocketClient(address)
+    c = SocketClient(address)
 
     if authkey is not None and not isinstance(authkey, bytes):
         raise TypeError('authkey should be a byte string')
@@ -496,7 +468,7 @@ def Pipe(duplex=True):
     '''
     Returns pair of connection objects at either end of a pipe
     '''
-    h1 = h2 = randint(1e8, 1e9)      
+    h1, h2 = get_handle_pair(conn_type=REDIS_LIST_CONN)     
 
     if duplex:
         c1 = Connection(h1)
@@ -516,38 +488,47 @@ class SocketListener(object):
     '''
     Representation of a socket which is bound to an address and listening
     '''
-    def __init__(self, address, family, backlog=1):
-        self._socket = socket.socket(getattr(socket, family))
-        try:
-            # SO_REUSEADDR has different semantics on Windows (issue #2550).
-            if os.name == 'posix':
-                self._socket.setsockopt(socket.SOL_SOCKET,
-                                        socket.SO_REUSEADDR, 1)
-            self._socket.setblocking(True)
-            self._socket.bind(address)
-            self._socket.listen(backlog)
-            self._address = self._socket.getsockname()
-        except OSError:
-            self._socket.close()
-            raise
-        self._family = family
-        self._last_accepted = None
+    def __init__(self, address, family=None, backlog=1):
+        self._address = address
+        self._family = 'AF_REDIS'
+        self._client = util.get_redis_client()
+        self._connect()
 
-        if family == 'AF_UNIX':
-            self._unlink = util.Finalize(
-                self, os.unlink, args=(address,), exitpriority=0
-                )
-        else:
-            self._unlink = None
+        self._last_accepted = None
+        self._unlink = None
+
+    def _connect(self):
+        self._pubsub = self._client.pubsub()
+        self._pubsub.subscribe(self._address)
+        self._gen = self._pubsub.listen()
+        # ignore first message (subscribe message)
+        next(self._gen)
+
+    def __getstate__(self):
+        return (self._address, self._family, self._client,
+            self._last_accepted, self._unlink)
+
+    def __setstate__(self, state):
+        (self._address, self._family, self._client,
+            self._last_accepted, self._unlink) = state
+        self._connect()
 
     def accept(self):
-        s, self._last_accepted = self._socket.accept()
-        s.setblocking(True)
-        return Connection(s.detach())
+        msg = next(self._gen)
+        client_subhandle = msg['data'].decode('utf-8')
+        c = Connection(client_subhandle)
+        c.send('OK')
+        self._last_accepted = client_subhandle
+        return c
 
     def close(self):
         try:
-            self._socket.close()
+            self._pubsub.close()
+            self._pubsub = None
+            self._gen = None
+            if hasattr(self._client, 'close'):
+                self._client.close()
+                self._client = None
         finally:
             unlink = self._unlink
             if unlink is not None:
@@ -559,101 +540,19 @@ def SocketClient(address):
     '''
     Return a connection object connected to the socket given by `address`
     '''
-    family = address_type(address)
-    with socket.socket( getattr(socket, family) ) as s:
-        s.setblocking(True)
-        s.connect(address)
-        return Connection(s.detach())
+    h1, _ = get_handle_pair(conn_type=REDIS_PUBSUB_CONN)
+    c = Connection(h1)
+    c._channelwrite(address, c._subhandle.encode('utf-8'))
+
+    if c._poll(CONNECTION_TIMEOUT):
+        c.recv()
+        return c
+    else:
+        raise ConnectionRefusedError(address)
 
 
-#
-# Definitions for connections based on named pipes
-#
-
-if sys.platform == 'win32':
-
-    class PipeListener(object):
-        '''
-        Representation of a named pipe
-        '''
-        def __init__(self, address, backlog=None):
-            self._address = address
-            self._handle_queue = [self._new_handle(first=True)]
-
-            self._last_accepted = None
-            util.sub_debug('listener created with address=%r', self._address)
-            self.close = util.Finalize(
-                self, PipeListener._finalize_pipe_listener,
-                args=(self._handle_queue, self._address), exitpriority=0
-                )
-
-        def _new_handle(self, first=False):
-            flags = _winapi.PIPE_ACCESS_DUPLEX | _winapi.FILE_FLAG_OVERLAPPED
-            if first:
-                flags |= _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE
-            return _winapi.CreateNamedPipe(
-                self._address, flags,
-                _winapi.PIPE_TYPE_MESSAGE | _winapi.PIPE_READMODE_MESSAGE |
-                _winapi.PIPE_WAIT,
-                _winapi.PIPE_UNLIMITED_INSTANCES, BUFSIZE, BUFSIZE,
-                _winapi.NMPWAIT_WAIT_FOREVER, _winapi.NULL
-                )
-
-        def accept(self):
-            self._handle_queue.append(self._new_handle())
-            handle = self._handle_queue.pop(0)
-            try:
-                ov = _winapi.ConnectNamedPipe(handle, overlapped=True)
-            except OSError as e:
-                if e.winerror != _winapi.ERROR_NO_DATA:
-                    raise
-                # ERROR_NO_DATA can occur if a client has already connected,
-                # written data and then disconnected -- see Issue 14725.
-            else:
-                try:
-                    res = _winapi.WaitForMultipleObjects(
-                        [ov.event], False, INFINITE)
-                except:
-                    ov.cancel()
-                    _winapi.CloseHandle(handle)
-                    raise
-                finally:
-                    _, err = ov.GetOverlappedResult(True)
-                    assert err == 0
-            return PipeConnection(handle)
-
-        @staticmethod
-        def _finalize_pipe_listener(queue, address):
-            util.sub_debug('closing listener with address=%r', address)
-            for handle in queue:
-                _winapi.CloseHandle(handle)
-
-    def PipeClient(address):
-        '''
-        Return a connection object connected to the pipe given by `address`
-        '''
-        t = _init_timeout()
-        while 1:
-            try:
-                _winapi.WaitNamedPipe(address, 1000)
-                h = _winapi.CreateFile(
-                    address, _winapi.GENERIC_READ | _winapi.GENERIC_WRITE,
-                    0, _winapi.NULL, _winapi.OPEN_EXISTING,
-                    _winapi.FILE_FLAG_OVERLAPPED, _winapi.NULL
-                    )
-            except OSError as e:
-                if e.winerror not in (_winapi.ERROR_SEM_TIMEOUT,
-                                      _winapi.ERROR_PIPE_BUSY) or _check_timeout(t):
-                    raise
-            else:
-                break
-        else:
-            raise
-
-        _winapi.SetNamedPipeHandleState(
-            h, _winapi.PIPE_READMODE_MESSAGE, None, None
-            )
-        return PipeConnection(h)
+PipeListener = SocketListener
+PipeClient = SocketClient
 
 
 #
@@ -755,11 +654,15 @@ def wait(object_list, timeout=None):
 
     while True:
         ready = []
-        for client, key in object_list:
-            l = client.llen(key)
-            if l > 0:
-                ready.append((client, key))
-
+        for client, handle in object_list:
+            if handle.startswith(REDIS_LIST_CONN):
+                l = client.llen(handle)
+                if l > 0:
+                    ready.append((client, handle))
+            elif handle.startswith(REDIS_PUBSUB_CONN)\
+                 and client.connection.can_read():
+                ready.append((client, handle))
+                
         if any(ready):
             return ready
 
@@ -767,7 +670,7 @@ def wait(object_list, timeout=None):
             timeout = deadline - time.monotonic()
             if timeout < 0:
                 return ready
-        time.sleep(0.2)
+        time.sleep(0.1)
 
 #
 # Make connection and socket objects sharable if possible

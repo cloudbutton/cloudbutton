@@ -263,6 +263,9 @@ class SimpleQueue:
             self._reader.close()
             self._closed = True
 
+
+Queue = SimpleQueue
+
 #
 # A queue type which also supports join() and task_done() methods
 #

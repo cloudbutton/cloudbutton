@@ -10,7 +10,7 @@ setup(
     author_email='cloudlab@urv.cat',
     packages=find_packages(),
     install_requires=[
-        'pywren-ibm-cloud'
+        'pywren-ibm-cloud>=1.5.2', 'redis'
     ],
     include_package_data=True,
     classifiers=[

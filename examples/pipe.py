@@ -1,9 +1,11 @@
 from cloudbutton import Process, Pipe, getpid
 
+
 def f(conn):
     print("I'm process", getpid())
     conn.send([42, None, 'hello'])
     conn.close()
+
 
 if __name__ == '__main__':
     parent_conn, child_conn = Pipe()

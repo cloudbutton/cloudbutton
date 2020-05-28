@@ -8,17 +8,14 @@
 #
 
 __all__ = [
-    'Lock', 'RLock', 'Semaphore', 'BoundedSemaphore', 'Condition', 'Event'
+    'Lock', 'RLock', 'Semaphore', 'BoundedSemaphore',
+    'Condition', 'Event', 'Barrier'
     ]
 
 import threading
 import sys
-import tempfile
-import _multiprocessing
 import time
 import uuid
-from collections import deque
-from redis.lock import Lock as RedisLock
 
 from . import context
 from . import process
@@ -36,66 +33,36 @@ SEM_VALUE_MAX = 2**30
 
 class SemLock:
 
-    # KEYS[1] - semaphore counter key
-    # KEYS[2] - block list key
-    # ARGV[1] - block key
-    # return new_value if the semaphore was acquired, 
-    # otherwise return the block key
-    #
-    # Decrements the value by one and returns it if
-    # new_value >= 0. Otherwise, puts the block key
-    # in the block list so that someone can notify it
-    # when it releases the semaphore.
-    LUA_ACQUIRE_SCRIPT = """
-        local new_value = redis.call('decr', KEYS[1])
-        if new_value < 0 then
-            redis.call('rpush', KEYS[2], ARGV[1])
-            return ARGV[1]
-        end
-        return new_value
-    """
-
-    # KEYS[1] - semaphore counter key
-    # KEYS[2] - block list key
+    # KEYS[1] - semlock name
     # ARGV[1] - max value
-    # return the first block key from the block list
-    # referring to the process that was released by
-    # this operation. If none was released, 
-    # (new_value > 0) then return new_value
+    # return new semlock value
+    # only increments its value if
+    # it is not above the max value
     LUA_RELEASE_SCRIPT = """
-        local current_value = tonumber(redis.call('get', KEYS[1]))
+        local current_value = tonumber(redis.call('llen', KEYS[1]))
         if current_value >= tonumber(ARGV[1]) then
             return current_value
         end
-        local new_value = redis.call('incr', KEYS[1])
-        if new_value < 1 then
-            return redis.call('lpop', KEYS[2])
-        end
-        return new_value
+        redis.call('rpush', KEYS[1], '')
+        return current_value + 1
     """
 
     def __init__(self, value=1, max_value=1):
+        self._name = 'semlock-' + uuid.uuid1().hex
         self._max_value = max_value
-        self._counter_handle = uuid.uuid1().hex
-        self._blocked_handle = uuid.uuid1().hex
         self._client = util.get_redis_client()
-        self._client.incr(self._counter_handle, value)
-        self._register_scripts()
-
-    def _register_scripts(self):
-        self._lua_acquire = self._client.register_script(Semaphore.LUA_ACQUIRE_SCRIPT)
-        util.make_stateless_script(self._lua_acquire)
+        self._client.rpush(self._name, *([''] * value))
 
         self._lua_release = self._client.register_script(Semaphore.LUA_RELEASE_SCRIPT)
         util.make_stateless_script(self._lua_release)
 
     def __getstate__(self):
-        return (self._max_value, self._counter_handle, self._blocked_handle,
-                self._client, self._lua_acquire, self._lua_release)
+        return (self._name, self._max_value, 
+                self._client, self._lua_release)
 
     def __setstate__(self, state):
-        (self._max_value, self._counter_handle, self._blocked_handle,
-         self._client, self._lua_acquire, self._lua_release) = state
+        (self._name, self._max_value,
+         self._client, self._lua_release) = state
 
     def __enter__(self):
         self.acquire()
@@ -105,30 +72,20 @@ class SemLock:
         self.release()
 
     def get_value(self):
-        value = self._client.get(self._counter_handle)
+        value = self._client.llen(self._name)
         return int(value)
 
     def acquire(self, block=True):
-        keys = [self._counter_handle, self._blocked_handle]
-        blocked_key = uuid.uuid1().hex
-        res = self._lua_acquire(keys=keys,
-                                args=[blocked_key],
-                                client=self._client)
-        if type(res) == bytes:
-            if block:
-                self._client.blpop([blocked_key])
-                return True
-            return False
-        return True
+        if block:
+            self._client.blpop([self._name])
+            return True
+        else:
+            return self._client.lpop(self._name) is not None
         
     def release(self):
-        keys = [self._counter_handle, self._blocked_handle]
-        res = self._lua_release(keys=keys,
-                                args=[self._max_value],
-                                client=self._client)
-        if type(res) == bytes:
-            blocked_key = res.decode()
-            self._client.rpush(blocked_key, '') 
+        self._lua_release(keys=[self._name],
+                          args=[self._max_value],
+                          client=self._client)
 
     def __repr__(self):
         try:
@@ -204,7 +161,7 @@ class Condition:
             # help reducing the amount of open clients
             self._client = self._lock._client
         
-        self._notify_handle = uuid.uuid1().hex
+        self._notify_handle = 'condition-notify-' + uuid.uuid1().hex
 
 
     def acquire(self):
@@ -223,7 +180,7 @@ class Condition:
         assert self._lock.owned
 
         # Enqueue the key we will be waiting for until we are notified
-        self._wait_handle = uuid.uuid1().hex
+        self._wait_handle = 'condition-wait-' + uuid.uuid1().hex
         res = self._client.rpush(self._notify_handle, self._wait_handle)
 
         if not res:

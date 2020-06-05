@@ -50,6 +50,14 @@ class BaseContext(object):
         else:
             return num
     """
+    def CloudStorage(self, config=None):
+        from .util import get_cloud_storage_client
+        return get_cloud_storage_client(config)
+
+    def CloudFileProxy(self, config=None):
+        from .cloud_proxy import CloudFileProxy
+        cs = self.CloudStorage(config)
+        return CloudFileProxy(cloud_storage=cs)
 
     def Manager(self):
         '''Returns a manager associated with a running server process
@@ -63,7 +71,6 @@ class BaseContext(object):
         '''Returns two connection object connected by a pipe'''
         from .connection import Pipe
         return Pipe(duplex)
-
 
     def Lock(self):
         '''Returns a non-recursive lock object'''
@@ -115,7 +122,7 @@ class BaseContext(object):
         from .queues import SimpleQueue
         return SimpleQueue()
 
-    def Pool(self, processes=None, initializer=None, initargs=(),
+    def Pool(self, processes=None, initializer=None, initargs={},
              maxtasksperchild=None):
         '''Returns a process pool object'''
         from .pool import Pool

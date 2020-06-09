@@ -50,15 +50,6 @@ class BaseContext(object):
         else:
             return num
     """
-    def CloudStorage(self, config=None):
-        from .util import get_cloud_storage_client
-        return get_cloud_storage_client(config)
-
-    def CloudFileProxy(self, config=None):
-        from .cloud_proxy import CloudFileProxy
-        cs = self.CloudStorage(config)
-        return CloudFileProxy(cloud_storage=cs)
-
     def Manager(self):
         '''Returns a manager associated with a running server process
         The managers methods such as `Lock()`, `Condition()` and `Queue()`
@@ -128,6 +119,39 @@ class BaseContext(object):
         from .pool import Pool
         return Pool(processes, initializer, initargs, maxtasksperchild,
                     context=self.get_context())
+
+    def CloudStorage(self, config=None):
+        from .util import get_cloud_storage_client
+        return get_cloud_storage_client(config)
+
+    @property
+    def os(self):
+        try:
+            return self._proxy
+        except AttributeError:
+            if hasattr(self, '_proxy'):
+                raise
+            else:
+                from .cloud_proxy import CloudFileProxy
+                if not hasattr(self, '_storage'):
+                    self._storage = self.CloudStorage()
+                self._proxy = CloudFileProxy(self._storage)
+                return self._proxy
+
+    def open(self, *args, **kwargs):
+        try:
+            kwargs['cloud_storage'] = self._storage
+            return self._open(*args, **kwargs)
+        except AttributeError:
+            if hasattr(self, '_open'):
+                raise
+            else:          
+                from .cloud_proxy import cloud_open 
+                self._open = cloud_open
+                if not hasattr(self, '_storage'):
+                    self._storage = self.CloudStorage()
+                kwargs['cloud_storage'] = self._storage
+                return self._open(*args, **kwargs)
 
     """
     def RawValue(self, typecode_or_type, *args):

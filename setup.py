@@ -1,8 +1,10 @@
 from setuptools import setup, find_packages
 
+exec(open('pywren_ibm_cloud/version.py').read())
+
 setup(
     name='cloudbutton',
-    version='0.1.0',
+    version=__version__,
     url='https://github.com/cloudbutton/cloudbutton',
     author='Cloudbutton Team',
     description='Run many jobs over the Cloud',

@@ -5,7 +5,8 @@ It currently supports AWS Lambda, IBM Cloud Functions, Google Cloud Functions, A
 
 ### Getting started
 Map Python functions using a pool of workers  
-    ```python
+
+   ```python
     from cloudbutton import Pool
     from random import random
 
@@ -20,10 +21,11 @@ Map Python functions using a pool of workers
         res = pool.map(is_in, range(SAMPLES))
         pi = 4.0 * sum(res) / SAMPLES
         print(f'Pi is roughly {pi}')
-    ```
+   ```
 
 Use cloud storage as a filesystem for shared memory  
-    ```python
+
+   ```python
     from cloudbutton import Pool, os, open
     from random import choice
 
@@ -47,10 +49,11 @@ Use cloud storage as a filesystem for shared memory
         res = pool.map(count_char, [(char, filename) for char in alphabet])
         print(res)
         os.remove(filename)
-    ```
+   ```
 
 Use remote in-memory cache for fast IPC and synchronization  
-    ```python
+
+   ```python
     from cloudbutton import Pool, Manager, Lock
     from random import choice
 
@@ -73,7 +76,7 @@ Use remote in-memory cache for fast IPC and synchronization
 
         pool.map(count_multiples, [(i, sequence, record, lock) for i in range(1, 11)])
         print(record.todict())
-    ```
+   ```
 
 ## Documentation
 - [Website](https://cloudbutton.github.io)

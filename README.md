@@ -1,6 +1,6 @@
 # Cloudbutton Toolkit
 
-#### The Cloudbutton Toolkit is a Python multicloud library for running serverless jobs.  
+#### The Cloudbutton Toolkit is a Python multicloud library for running serverless jobs   
 It currently supports AWS Lambda, IBM Cloud Functions, Google Cloud Functions, Azure Functions, Aliyun Function Compute, and Knative.
 
 ### Getting started

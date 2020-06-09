@@ -1,5 +1,6 @@
-from cloudbutton import Pool, Semaphore, SimpleQueue, getpid
+from cloudbutton.multiprocessing import Pool, Semaphore, SimpleQueue, getpid
 import time
+
 
 def f(sem, q):
     with sem:
@@ -8,6 +9,7 @@ def f(sem, q):
         msg = 'process: {} - timestamp: {}'.format(pid, ts)
         q.put(msg)
         time.sleep(3)
+
 
 if __name__ == "__main__":
     # inital value to 3
@@ -20,4 +22,3 @@ if __name__ == "__main__":
 
     for _ in range(n):
         print(q.get())
-

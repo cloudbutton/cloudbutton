@@ -24,7 +24,7 @@ __all__ = [
     'sub_debug', 'debug', 'info', 'sub_warning', 'get_logger',
     'log_to_stderr', 'get_temp_dir', 'register_after_fork',
     'is_exiting', 'Finalize', 'ForkAwareThreadLock', 'ForkAwareLocal',
-    'close_all_fds_except', 'SUBDEBUG', 'SUBWARNING', 'get_redis_conn_params'
+    'close_all_fds_except', 'SUBDEBUG', 'SUBWARNING'
     ]
 
 #
@@ -438,10 +438,11 @@ class PicklableRedis(redis.StrictRedis):
         self.__init__(*state[0], **state[1])
 
 
-from pywren_ibm_cloud.config import default_config, extract_storage_config
+from cloudbutton.engine.config import default_config, extract_storage_config
 
 def get_default_config(config=None):
     return default_config(config)
+
 
 def get_redis_client():
     conn_params = get_default_config()['redis']
@@ -452,7 +453,7 @@ def get_redis_client():
 # Picklable cloud object storage client
 #
 
-from pywren_ibm_cloud.storage import InternalStorage
+from cloudbutton.engine.storage import InternalStorage
 
 class PicklableCloudStorage(InternalStorage):
     def __init__(self, *args, **kwargs):

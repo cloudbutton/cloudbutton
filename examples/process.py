@@ -1,4 +1,4 @@
-from cloudbutton import Process
+from cloudbutton.multiprocessing import Process
 
 
 def f(name):

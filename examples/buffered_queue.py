@@ -1,7 +1,6 @@
-from cloudbutton import Process, Queue, getpid
+from cloudbutton.multiprocessing import Process, Queue, getpid
 import time
 
-# Won't work unless pywren functions have >1 cores
 
 def f(q):
     print("I'm process", getpid())

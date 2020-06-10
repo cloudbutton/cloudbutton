@@ -1,8 +1,7 @@
-from cloudbutton import Process, SimpleQueue, getpid
+from cloudbutton.multiprocessing import Process, SimpleQueue
 
 
 def f(q):
-    print("I'm process", getpid())
     q.put([42, None, 'hello World'])
 
 

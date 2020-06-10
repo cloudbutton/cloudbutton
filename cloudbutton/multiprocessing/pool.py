@@ -17,11 +17,9 @@ import threading
 import queue
 import itertools
 import collections
-import os
 import time
 import traceback
-
-import pywren_ibm_cloud as pywren
+import cloudbutton.engine as engine
 
 # If threading is available then ThreadPool should be provided.  Therefore
 # we avoid top-level imports which are liable to fail on some systems.
@@ -155,7 +153,7 @@ class Pool(object):
     def Process(self, *args, **kwds):
         return self._ctx.Process(*args, **kwds)
 
-    def __init__(self, processes=None, initializer=None, initargs={},
+    def __init__(self, processes=None, initializer=None, initargs=(),
                  maxtasksperchild=None, context=None):
         self._ctx = context or get_context()
         #self._setup_queues()
@@ -170,10 +168,16 @@ class Pool(object):
             raise ValueError("Number of processes must be at least 1")
 
         if processes is not None:
-            self._executor = pywren.function_executor(workers=processes, **self._initargs)
+            if self._initargs:
+                self._executor = engine.function_executor(workers=processes, **self._initargs)
+            else:
+                self._executor = engine.function_executor(workers=processes)
             self._processes = processes
         else:
-            self._executor = pywren.function_executor(**self._initargs)
+            if self._initargs:
+                self._executor = engine.function_executor(**self._initargs)
+            else:
+                self._executor = engine.function_executor()
             self._processes = self._executor.invoker.workers
 
         if initializer is not None and not callable(initializer):
@@ -609,10 +613,6 @@ class Pool(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.terminate()
 
-    # def __getattribute__(self, name):
-    #     if not name.startswith('_'): print('>>>>>>>>>>>>>>>>>>>', name)
-    #     return object.__getattribute__(self, name)
-
 
 #
 # Class whose instances are returned by `Pool.apply_async()`
@@ -640,20 +640,14 @@ class ApplyResult(object):
     def get(self, timeout=None):
         self.wait(timeout)
         self._value = self._executor.get_result(self._futures)
-
-        if self._callback:
-            self._callback(self._value)
-
         return self._value
 
     def _set(self, i, success_result):
         self._success, self._value = success_result
         if self._callback and self._success:
             self._callback(self._value)
-            self._callback = None
         if self._error_callback and not self._success:
             self._error_callback(self._value)
-            self._error_callback = None
         self._event.set()
         del self._cache[self._job]
 

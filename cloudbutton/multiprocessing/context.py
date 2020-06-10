@@ -119,11 +119,6 @@ class BaseContext(object):
         from .pool import Pool
         return Pool(processes, initializer, initargs, maxtasksperchild,
                     context=self.get_context())
-
-    def CloudStorage(self, config=None):
-        from .util import get_cloud_storage_client
-        return get_cloud_storage_client(config)
-
     """
     def RawValue(self, typecode_or_type, *args):
         '''Returns a shared object'''

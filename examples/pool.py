@@ -1,11 +1,8 @@
 #from multiprocessing import Pool
-# from os import getpid
-from cloudbutton import Pool
-from cloudbutton import getpid
+from cloudbutton.multiprocessing import Pool
 
 
 def double(i):
-    print("I'm process", getpid())
     return i * 2
 
 

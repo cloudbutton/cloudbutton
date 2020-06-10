@@ -71,6 +71,11 @@ def cloud_open(filename, mode='r', cloud_storage=None):
         else:
             return DelayedStringBuffer(action)
 
+
+def CloudStorage(self, config=None):
+    from .util import get_cloud_storage_client
+    return get_cloud_storage_client(config)
+
 @property
 def os(self):
     try:

@@ -1,9 +1,7 @@
-from cloudbutton import Process, JoinableQueue
-from cloudbutton import getpid
+from cloudbutton.multiprocessing import Process, JoinableQueue
 
 
 def worker(q):
-    print("I'm process", getpid())
     working = True
     while working:
         x = q.get()

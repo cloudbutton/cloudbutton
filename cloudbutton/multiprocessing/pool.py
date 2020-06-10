@@ -19,7 +19,7 @@ import itertools
 import collections
 import time
 import traceback
-import pywren_ibm_cloud as pic
+import cloudbutton.engine as engine
 
 # If threading is available then ThreadPool should be provided.  Therefore
 # we avoid top-level imports which are liable to fail on some systems.
@@ -168,10 +168,16 @@ class Pool(object):
             raise ValueError("Number of processes must be at least 1")
 
         if processes is not None:
-            self._executor = pic.function_executor(workers=processes, **self._initargs)
+            if self._initargs:
+                self._executor = engine.function_executor(workers=processes, **self._initargs)
+            else:
+                self._executor = engine.function_executor(workers=processes)
             self._processes = processes
         else:
-            self._executor = pic.function_executor(**self._initargs)
+            if self._initargs:
+                self._executor = engine.function_executor(**self._initargs)
+            else:
+                self._executor = engine.function_executor()
             self._processes = self._executor.invoker.workers
 
         if initializer is not None and not callable(initializer):

@@ -1,5 +1,6 @@
-from cloudbutton import Pool, Barrier, SimpleQueue, getpid
+from cloudbutton.multiprocessing import Pool, Barrier, SimpleQueue, getpid
 import time
+
 
 def f(barrier, q):
     barrier.wait()
@@ -7,6 +8,7 @@ def f(barrier, q):
     ts = time.time()
     msg = 'process: {} - timestamp: {}'.format(pid, ts)
     q.put(msg)
+
 
 if __name__ == "__main__":
     q = SimpleQueue()
@@ -17,9 +19,7 @@ if __name__ == "__main__":
         p.map_async(f, [[barrier, q]] * (n - 1)) # all - 1
 
         print('Result queue empty:', q.empty())
-        
+
         p.apply_async(f, [barrier, q])
         for _ in range(n):
             print(q.get())
-    
-

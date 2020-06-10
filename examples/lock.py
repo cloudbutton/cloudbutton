@@ -1,5 +1,6 @@
-from cloudbutton import Pool, Lock, SimpleQueue, getpid
+from cloudbutton.multiprocessing import Pool, Lock, SimpleQueue, getpid
 import time
+
 
 def f(lock, q):
     with lock:
@@ -8,6 +9,7 @@ def f(lock, q):
         msg = 'process: {} - timestamp: {}'.format(pid, ts)
         q.put(msg)
         time.sleep(1)
+
 
 if __name__ == "__main__":
     lock = Lock()

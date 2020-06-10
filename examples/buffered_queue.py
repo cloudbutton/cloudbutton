@@ -1,4 +1,4 @@
-from cloudbutton import Process, Queue, getpid
+from cloudbutton.multiprocessing import Process, Queue, getpid
 import time
 
 

@@ -194,6 +194,24 @@ class BaseProxy(object):
 # Types/callables which we will register with SyncManager
 #
 
+# FIXME: list slices should return an instance of a ListProxy
+#        or a native python list?
+#        
+#          A = ListProxy([1, 2, 3])
+#          B = A[:2]
+#          C = A + [4, 5]
+#          D = A * 3
+#        
+#        Following the multiprocessing implementation, lists (B,
+#        C, D) are plain python lists while A is the only ListProxy.
+#        This could cause problems like these:
+#        
+#          A = A[2:]
+#        
+#        with A being a python list after executing.
+#        
+#        Current implementation is the same as multiprocessing
+
 class ListProxy(BaseProxy):
 
     # KEYS[1] - key to extend
@@ -276,8 +294,8 @@ class ListProxy(BaseProxy):
                 return []
             serialized = self._client.lrange(self._oid, start, end)
             unserialized = [self._pickler.loads(obj) for obj in serialized]
-            #return unserialized
-            return type(self)(unserialized)
+            return unserialized
+            #return type(self)(unserialized)
         else:
             raise TypeError('list indices must be integers '
                 'or slices, not {}'.format(type(i)))
@@ -320,8 +338,9 @@ class ListProxy(BaseProxy):
     def __add__(self, x):
         # FIXME: list only allows concatenation to other list objects
         #        (altough it can to be extended by iterables)
-        newlist = deepcopy(self)
-        return newlist.__iadd__(x)
+        # newlist = deepcopy(self)
+        # return newlist.__iadd__(x)
+        return self[:] + x
 
     def __iadd__(self, x):
         # FIXME: list only allows concatenation to other list objects
@@ -334,16 +353,15 @@ class ListProxy(BaseProxy):
             raise TypeError("TypeError: can't multiply sequence"
                     " by non-int of type {}". format(type(n)))
         if n < 1:
-            return type(self)() # FIXME: return [] ?
+            # return type(self)()
+            return []
         else:
-            newlist = type(self)()
-            newlist._extend_same_type(self, repeat=n)
-            return newlist
+            # newlist = type(self)()
+            # newlist._extend_same_type(self, repeat=n)
+            # return newlist
+            return self[:] * n
 
     def __rmul__(self, n):
-        if not isinstance(n, int):
-            raise TypeError("TypeError: can't multiply sequence"
-                    " by non-int of type {}". format(type(n)))
         return self.__mul__(n)
 
     def __imul__(self, n):
@@ -376,13 +394,13 @@ class ListProxy(BaseProxy):
         self._client.ltrim(self._oid, length, -1)
         return self
 
-    def __delitem__(self, i):
-        raise NotImplementedError
-    
     def index(self, obj, start=0, end=-1):
-        raise NotImplementedError
-        
+        return self[:].index(obj, start, end)
+    
     def count(self, obj):
+        return self[:].count(obj)
+
+    def __delitem__(self, i):
         raise NotImplementedError
 
     def insert(self, index, obj):
@@ -542,9 +560,10 @@ class NamespaceProxy(BaseProxy):
 
 
 class ValueProxy(BaseProxy):
-    def __init__(self, typecode, value, lock=True):
+    def __init__(self, typecode='Any', value=None, lock=True):
         super().__init__('Value({})'.format(typecode))
-        self.set(value)
+        if value is not None:
+            self.set(value)
 
     def get(self):
         serialized = self._client.get(self._oid)

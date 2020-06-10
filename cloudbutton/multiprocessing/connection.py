@@ -42,10 +42,10 @@ except ImportError:
 #           Handle prefixes
 # Separated keys/channels so that a given
 # connection cannot read its own messages
-REDIS_LIST_CONN = 'listconn'
+REDIS_LIST_CONN = 'listconn'    # uses lists
 REDIS_LIST_CONN_A = REDIS_LIST_CONN + '-a-'
 REDIS_LIST_CONN_B = REDIS_LIST_CONN + '-b-'
-REDIS_PUBSUB_CONN = 'pubsubconn'
+REDIS_PUBSUB_CONN = 'pubsubconn'    # uses channels (pub/sub)
 REDIS_PUBSUB_CONN_A = REDIS_PUBSUB_CONN + '-a-'
 REDIS_PUBSUB_CONN_B = REDIS_PUBSUB_CONN + '-b-'
 
@@ -350,7 +350,7 @@ class Connection(_ConnectionBase):
         return self._client.llen(self._handle)
 
     def _close(self, _close=None):
-        # FIXME: older versions of redis clients can't be closed
+        # older versions of StrictRedis can't be closed
         if hasattr(self._client, 'close'):
             self._client.close()
 

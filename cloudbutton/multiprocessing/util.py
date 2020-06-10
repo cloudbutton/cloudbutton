@@ -18,8 +18,6 @@ import threading        # we want threading to install it's
                         # cleanup function before multiprocessing does
 from subprocess import _args_from_interpreter_flags
 
-from cloudbutton.engine.config import get_default_config_filename, load_yaml_config
-
 from . import process
 
 __all__ = [
@@ -423,35 +421,69 @@ def spawnv_passfds(path, args, passfds):
         os.close(errpipe_write)
 
 
+from pywren_ibm_cloud.config import (get_default_config_filename, 
+                                     load_yaml_config,
+                                     default_config,
+                                     extract_storage_config)
+from pywren_ibm_cloud.storage import InternalStorage
+import yaml
+
 #
 # Picklable redis client
 #
 
 class PicklableRedis(redis.StrictRedis):
-    def __init__(self, **args):
-        super().__init__(**args)
+    def __init__(self, *args, **kwargs):
         self._args = args
+        self._kwargs = kwargs
+        super().__init__(*self._args, **self._kwargs)
 
     def __getstate__(self):
-        return self._args
+        return (self._args, self._kwargs)
 
     def __setstate__(self, state):
-        self.__init__(**state)
+        self.__init__(*state[0], **state[1])
 
 
-def get_redis_conn_params():
+def get_default_config():
     config_file = get_default_config_filename()
-    data = load_yaml_config(config_file)
-    return data['redis']
+    config = load_yaml_config(config_file)
+    config = default_config(config)
+    return config
 
 
 def get_redis_client():
-    conn_params = get_redis_conn_params()
+    conn_params = get_default_config()['redis']
     return PicklableRedis(**conn_params)
 
 
 #
-# Unique ids for redis keys/hashes
+# Picklable cloud object storage client
+#
+
+class PicklableCloudStorage(InternalStorage):
+    def __init__(self, *args, **kwargs):
+        self._args = args
+        self._kwargs = kwargs
+        super().__init__(*self._args, **self._kwargs)
+
+    def __getstate__(self):
+        return (self._args, self._kwargs)
+
+    def __setstate__(self, state):
+        self.__init__(*state[0], **state[1])
+
+
+def get_cloud_storage_client(config=None):
+    if config is None:
+        config = get_default_config()
+    storage_config = extract_storage_config(config)
+    return PicklableCloudStorage(storage_config)
+
+
+
+#
+# Unique id for redis keys/hashes
 #
 
 def get_uuid(length=12):

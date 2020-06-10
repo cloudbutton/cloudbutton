@@ -18,14 +18,14 @@ CBH = {}
 
 
 def function_invoker(event):
-    if __version__ != event['pywren_version']:
+    if __version__ != event['cloudbutton_version']:
         raise Exception("WRONGVERSION", "PyWren version mismatch",
-                        __version__, event['pywren_version'])
+                        __version__, event['cloudbutton_version'])
 
     if event['log_level']:
         cloud_logging_config(event['log_level'])
     log_level = logging.getLevelName(logger.getEffectiveLevel())
-    custom_env = {'PYWREN_FUNCTION': 'True',
+    custom_env = {'CLOUDBUTTON_FUNCTION': 'True',
                   'PYTHONUNBUFFERED': 'True',
                   'CLOUDBUTTON_LOGLEVEL': log_level}
     os.environ.update(custom_env)
@@ -48,12 +48,12 @@ class FunctionInvoker:
         self.internal_storage = InternalStorage(storage_config)
         compute_config = extract_compute_config(self.config)
 
-        self.remote_invoker = self.config['pywren'].get('remote_invoker', False)
-        self.rabbitmq_monitor = self.config['pywren'].get('rabbitmq_monitor', False)
+        self.remote_invoker = self.config['cloudbutton'].get('remote_invoker', False)
+        self.rabbitmq_monitor = self.config['cloudbutton'].get('rabbitmq_monitor', False)
         if self.rabbitmq_monitor:
             self.rabbit_amqp_url = self.config['rabbitmq'].get('amqp_url')
 
-        self.num_workers = self.config['pywren'].get('workers')
+        self.num_workers = self.config['cloudbutton'].get('workers')
         logger.debug('Total workers: {}'.format(self.num_workers))
 
         self.compute_handlers = []
@@ -103,7 +103,7 @@ class FunctionInvoker:
                    'job_id': job.job_id,
                    'call_id': call_id,
                    'host_submit_tstamp': time.time(),
-                   'pywren_version': __version__,
+                   'cloudbutton_version': __version__,
                    'runtime_name': job.runtime_name,
                    'runtime_memory': job.runtime_memory}
 

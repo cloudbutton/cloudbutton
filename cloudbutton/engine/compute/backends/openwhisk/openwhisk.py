@@ -5,7 +5,7 @@ import textwrap
 from . import config as openwhisk_config
 from cloudbutton.engine.utils import version_str
 from cloudbutton.version import __version__
-from cloudbutton.engine.utils import is_pywren_function
+from cloudbutton.engine.utils import is_cloudbutton_function
 from cloudbutton.engine.libs.openwhisk.client import OpenWhiskClient
 from cloudbutton.engine.compute.utils import create_function_handler_zip
 
@@ -22,7 +22,7 @@ class OpenWhiskBackend:
         self.log_level = os.getenv('CLOUDBUTTON_LOGLEVEL')
         self.name = 'openwhisk'
         self.ow_config = ow_config
-        self.is_pywren_function = is_pywren_function()
+        self.is_cloudbutton_function = is_cloudbutton_function()
 
         self.user_agent = ow_config['user_agent']
 
@@ -44,7 +44,7 @@ class OpenWhiskBackend:
                                          insecure=self.insecure,
                                          user_agent=self.user_agent)
 
-        log_msg = ('PyWren v{} init for OpenWhisk - Namespace: {}'
+        log_msg = ('Cloudbutton v{} init for OpenWhisk - Namespace: {}'
                    .format(__version__, self.namespace))
         if not self.log_level:
             print(log_msg)
@@ -157,7 +157,7 @@ class OpenWhiskBackend:
         action_name = self._format_action_name(docker_image_name, runtime_memory)
 
         activation_id = self.cf_client.invoke(self.package, action_name,
-                                              payload, self.is_pywren_function)
+                                              payload, self.is_cloudbutton_function)
 
         return activation_id
 

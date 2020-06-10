@@ -66,7 +66,7 @@ class JobRunner:
 
         log_level = self.jr_config['log_level']
         cloud_logging_config(log_level)
-        self.pywren_config = self.jr_config['pywren_config']
+        self.cloudbutton_config = self.jr_config['cloudbutton_config']
         self.call_id = self.jr_config['call_id']
         self.job_id = self.jr_config['job_id']
         self.executor_id = self.jr_config['executor_id']
@@ -158,11 +158,11 @@ class JobRunner:
         func_sig = inspect.signature(function)
 
         if 'ibm_cos' in func_sig.parameters:
-            if 'ibm_cos' in self.pywren_config:
+            if 'ibm_cos' in self.cloudbutton_config:
                 if self.internal_storage.backend == 'ibm_cos':
                     ibm_boto3_client = self.internal_storage.get_client()
                 else:
-                    ibm_boto3_client = Storage(self.pywren_config, 'ibm_cos').get_client()
+                    ibm_boto3_client = Storage(self.cloudbutton_config, 'ibm_cos').get_client()
                 data['ibm_cos'] = ibm_boto3_client
             else:
                 raise Exception('Cannot create the ibm_cos client: missing configuration')
@@ -171,8 +171,8 @@ class JobRunner:
             data['storage'] = self.internal_storage.get_client()
 
         if 'rabbitmq' in func_sig.parameters:
-            if 'rabbitmq' in self.pywren_config:
-                rabbit_amqp_url = self.pywren_config['rabbitmq'].get('amqp_url')
+            if 'rabbitmq' in self.cloudbutton_config:
+                rabbit_amqp_url = self.cloudbutton_config['rabbitmq'].get('amqp_url')
                 params = pika.URLParameters(rabbit_amqp_url)
                 connection = pika.BlockingConnection(params)
                 data['rabbitmq'] = connection
@@ -213,7 +213,7 @@ class JobRunner:
             if obj.backend == self.internal_storage.backend:
                 storage_handler = self.internal_storage.storage_handler
             else:
-                storage_handler = Storage(self.pywren_config, obj.backend).get_storage_handler()
+                storage_handler = Storage(self.cloudbutton_config, obj.backend).get_storage_handler()
 
             if obj.data_byte_range is not None:
                 extra_get_args['Range'] = 'bytes={}-{}'.format(*obj.data_byte_range)
@@ -228,7 +228,7 @@ class JobRunner:
                 obj.data_stream = sb
 
     # Decorator to execute pre-run and post-run functions provided via environment variables
-    def prepost(self, func):
+    def prepost(func):
         def call(envVar):
             if envVar in os.environ:
                 method = locate(os.environ[envVar])

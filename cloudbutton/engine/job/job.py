@@ -28,7 +28,7 @@ def create_map_job(config, internal_storage, executor_id, job_id, map_function, 
     new_invoke_pool_threads = invoke_pool_threads
     new_runtime_memory = runtime_memory
 
-    if config['pywren'].get('rabbitmq_monitor', False):
+    if config['cloudbutton'].get('rabbitmq_monitor', False):
         rabbit_amqp_url = config['rabbitmq'].get('amqp_url')
         utils.create_rabbitmq_resources(rabbit_amqp_url, executor_id, job_id)
 
@@ -115,9 +115,9 @@ def _create_job(config, internal_storage, executor_id, job_id, func, data, runti
     """
     log_level = os.getenv('CLOUDBUTTON_LOGLEVEL')
 
-    runtime_name = config['pywren']['runtime']
+    runtime_name = config['cloudbutton']['runtime']
     if runtime_memory is None:
-        runtime_memory = config['pywren']['runtime_memory']
+        runtime_memory = config['cloudbutton']['runtime_memory']
 
     ext_env = {} if extra_env is None else extra_env.copy()
     if ext_env:
@@ -128,7 +128,7 @@ def _create_job(config, internal_storage, executor_id, job_id, func, data, runti
         return []
 
     if execution_timeout is None:
-        execution_timeout = config['pywren']['runtime_timeout'] - 5
+        execution_timeout = config['cloudbutton']['runtime_timeout'] - 5
 
     job_description = {}
     job_description['runtime_name'] = runtime_name
@@ -141,8 +141,8 @@ def _create_job(config, internal_storage, executor_id, job_id, func, data, runti
     job_description['executor_id'] = executor_id
     job_description['job_id'] = job_id
 
-    exclude_modules_cfg = config['pywren'].get('exclude_modules', [])
-    include_modules_cfg = config['pywren'].get('include_modules', [])
+    exclude_modules_cfg = config['cloudbutton'].get('exclude_modules', [])
+    include_modules_cfg = config['cloudbutton'].get('include_modules', [])
 
     exc_modules = set()
     inc_modules = set()
@@ -175,8 +175,8 @@ def _create_job(config, internal_storage, executor_id, job_id, func, data, runti
     host_job_meta['data_size_bytes'] = data_size_bytes
     host_job_meta['func_module_size_bytes'] = func_module_size_bytes
 
-    if 'data_limit' in config['pywren']:
-        data_limit = config['pywren']['data_limit']
+    if 'data_limit' in config['cloudbutton']:
+        data_limit = config['cloudbutton']['data_limit']
     else:
         data_limit = MAX_AGG_DATA_SIZE
 
@@ -223,9 +223,9 @@ def clean_job(jobs_to_clean, storage_config, clean_cloudobjects):
         jobs_path = temp.name
 
     script = """
-    from pywren_ibm_cloud.storage import InternalStorage
-    from pywren_ibm_cloud.storage.utils import clean_bucket
-    from pywren_ibm_cloud.config import JOBS_PREFIX, TEMP_PREFIX
+    from cloudbutton.engine.storage import InternalStorage
+    from cloudbutton.engine.storage.utils import clean_bucket
+    from cloudbutton.engine.config import JOBS_PREFIX, TEMP_PREFIX
     import pickle
     import os
 

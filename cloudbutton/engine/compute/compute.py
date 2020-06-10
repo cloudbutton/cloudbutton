@@ -18,12 +18,12 @@ class Compute:
         self.compute_handler = None
 
         try:
-            module_location = 'pywren_ibm_cloud.compute.backends.{}'.format(self.backend)
+            module_location = 'cloudbutton.engine.compute.backends.{}'.format(self.backend)
             cb_module = importlib.import_module(module_location)
             ComputeBackend = getattr(cb_module, 'ComputeBackend')
             self.compute_handler = ComputeBackend(self.config[self.backend])
         except Exception as e:
-            logger.error("There was en error trying to create the '{}' compute backend".format(e))
+            logger.error("There was an error trying to create the '{}' compute backend".format(e))
             raise e
 
     def invoke(self, runtime_name, memory, payload):

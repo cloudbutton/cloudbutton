@@ -15,10 +15,10 @@
 #
 
 import tempfile
-from pywren_ibm_cloud.executor import FunctionExecutor
-from pywren_ibm_cloud.version import __version__
+from cloudbutton.engine.executor import FunctionExecutor
+from cloudbutton.version import __version__
 
-name = "pywren_ibm_cloud"
+name = "cloudbutton"
 
 
 def ibm_cf_executor(config=None, runtime=None, runtime_memory=None,

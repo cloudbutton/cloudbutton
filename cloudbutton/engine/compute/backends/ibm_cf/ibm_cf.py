@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from ibm_botocore.credentials import DefaultTokenManager
 from cloudbutton.engine.utils import version_str
 from cloudbutton.version import __version__
-from cloudbutton.engine.utils import is_pywren_function
+from cloudbutton.engine.utils import is_cloudbutton_function
 from cloudbutton.engine.config import CACHE_DIR, load_yaml_config, dump_yaml_config
 from cloudbutton.engine.libs.openwhisk.client import OpenWhiskClient
 from cloudbutton.engine.compute.utils import create_function_handler_zip
@@ -26,7 +26,7 @@ class IBMCloudFunctionsBackend:
         self.log_level = os.getenv('CLOUDBUTTON_LOGLEVEL')
         self.name = 'ibm_cf'
         self.ibm_cf_config = ibm_cf_config
-        self.is_pywren_function = is_pywren_function()
+        self.is_cloudbutton_function = is_cloudbutton_function()
 
         self.user_agent = ibm_cf_config['user_agent']
         self.region = ibm_cf_config['region']
@@ -72,7 +72,7 @@ class IBMCloudFunctionsBackend:
                 token_minutes_diff = int((token_manager._expiry_time - datetime.now(timezone.utc)).total_seconds() / 60.0)
                 logger.debug("Token expiry time: {} - Minutes left: {}".format(token_manager._expiry_time, token_minutes_diff))
 
-            if (token_manager._is_expired() or token_minutes_diff < 11) and not is_pywren_function():
+            if (token_manager._is_expired() or token_minutes_diff < 11) and not is_cloudbutton_function():
                 logger.debug("Using IBM IAM API Key - Token expired. Requesting new token")
                 token_manager._token = None
                 token_manager.get_token()
@@ -92,7 +92,7 @@ class IBMCloudFunctionsBackend:
                                              auth=auth,
                                              user_agent=self.user_agent)
 
-        log_msg = ('PyWren v{} init for IBM Cloud Functions - Namespace: {} - '
+        log_msg = ('Cloudbutton v{} init for IBM Cloud Functions - Namespace: {} - '
                    'Region: {}'.format(__version__, self.namespace, self.region))
         if not self.log_level:
             print(log_msg)
@@ -208,7 +208,7 @@ class IBMCloudFunctionsBackend:
         activation_id = self.cf_client.invoke(package=self.package,
                                               action_name=action_name,
                                               payload=payload,
-                                              is_ow_action=self.is_pywren_function)
+                                              is_ow_action=self.is_cloudbutton_function)
 
         return activation_id
 

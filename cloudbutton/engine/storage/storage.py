@@ -4,7 +4,7 @@ import logging
 import importlib
 from cloudbutton.version import __version__
 from cloudbutton.engine.config import CACHE_DIR, RUNTIMES_PREFIX, JOBS_PREFIX, TEMP_PREFIX
-from cloudbutton.engine.utils import is_pywren_function, uuid_str
+from cloudbutton.engine.utils import is_cloudbutton_function, uuid_str
 from cloudbutton.engine.storage.utils import create_status_key, create_output_key, \
     status_key_suffix, init_key_suffix, CloudObject, StorageNoSuchKeyError
 
@@ -335,7 +335,7 @@ class InternalStorage:
         path = [RUNTIMES_PREFIX, __version__,  key+".meta.json"]
         filename_local_path = os.path.join(CACHE_DIR, *path)
 
-        if os.path.exists(filename_local_path) and not is_pywren_function():
+        if os.path.exists(filename_local_path) and not is_cloudbutton_function():
             logger.debug("Runtime metadata found in local cache")
             with open(filename_local_path, "r") as f:
                 runtime_meta = json.loads(f.read())
@@ -373,7 +373,7 @@ class InternalStorage:
                      .format(self.backend, self.bucket, obj_key))
         self.storage_handler.put_object(self.bucket, obj_key, json.dumps(runtime_meta))
 
-        if not is_pywren_function():
+        if not is_cloudbutton_function():
             filename_local_path = os.path.join(CACHE_DIR, *path)
             logger.debug("Storing runtime metadata into local cache: {}".format(filename_local_path))
 

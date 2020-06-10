@@ -13,7 +13,7 @@ from cloudbutton.engine.compute import Compute
 from cloudbutton.version import __version__
 from cloudbutton.engine.future import ResponseFuture
 from cloudbutton.engine.config import extract_storage_config, extract_compute_config
-from cloudbutton.engine.utils import version_str, is_pywren_function, is_unix_system
+from cloudbutton.engine.utils import version_str, is_cloudbutton_function, is_unix_system
 
 
 logger = logging.getLogger(__name__)
@@ -34,11 +34,11 @@ class FunctionInvoker:
         self.storage_config = extract_storage_config(self.config)
         self.internal_storage = internal_storage
         self.compute_config = extract_compute_config(self.config)
-        self.is_pywren_function = is_pywren_function()
+        self.is_cloudbutton_function = is_cloudbutton_function()
         self.invokers = []
 
-        self.remote_invoker = self.config['pywren'].get('remote_invoker', False)
-        self.workers = self.config['pywren'].get('workers')
+        self.remote_invoker = self.config['cloudbutton'].get('remote_invoker', False)
+        self.workers = self.config['cloudbutton'].get('workers')
         logger.debug('ExecutorID {} - Total available workers: {}'
                      .format(self.executor_id, self.workers))
 
@@ -73,9 +73,9 @@ class FunctionInvoker:
         installed, so this method will proceed to install it.
         """
         log_level = os.getenv('CLOUDBUTTON_LOGLEVEL')
-        runtime_name = self.config['pywren']['runtime']
+        runtime_name = self.config['cloudbutton']['runtime']
         if runtime_memory is None:
-            runtime_memory = self.config['pywren']['runtime_memory']
+            runtime_memory = self.config['cloudbutton']['runtime_memory']
 
         if runtime_memory:
             runtime_memory = int(runtime_memory)
@@ -104,7 +104,7 @@ class FunctionInvoker:
                     installing = True
                     print('(Installing...)')
 
-                timeout = self.config['pywren']['runtime_timeout']
+                timeout = self.config['cloudbutton']['runtime_timeout']
                 logger.debug('Creating runtime: {}, memory: {}MB'.format(runtime_name, runtime_memory))
                 runtime_meta = compute_handler.create_runtime(runtime_name, runtime_memory, timeout=timeout)
                 self.internal_storage.put_runtime_meta(runtime_key, runtime_meta)
@@ -126,7 +126,7 @@ class FunctionInvoker:
         """
         Starts the invoker process responsible to spawn pending calls in background
         """
-        if self.is_pywren_function or not is_unix_system():
+        if self.is_cloudbutton_function or not is_unix_system():
             for inv_id in range(INVOKER_PROCESSES):
                 p = Thread(target=self._run_invoker_process, args=(inv_id, ))
                 self.invokers.append(p)
@@ -196,7 +196,7 @@ class FunctionInvoker:
                    'job_id': job.job_id,
                    'call_id': call_id,
                    'host_submit_tstamp': time.time(),
-                   'pywren_version': __version__,
+                   'cloudbutton_version': __version__,
                    'runtime_name': job.runtime_name,
                    'runtime_memory': job.runtime_memory}
 
@@ -231,7 +231,7 @@ class FunctionInvoker:
                    'job_description': job_description,
                    'remote_invoker': True,
                    'invokers': 4,
-                   'pywren_version': __version__}
+                   'cloudbutton_version': __version__}
 
         activation_id = compute_handler.invoke(job.runtime_name, REMOTE_INVOKER_MEMORY, payload)
         roundtrip = time.time() - start
@@ -340,10 +340,10 @@ class JobMonitor:
         self.config = pywren_config
         self.internal_storage = internal_storage
         self.token_bucket_q = token_bucket_q
-        self.is_pywren_function = is_pywren_function()
+        self.is_cloudbutton_function = is_cloudbutton_function()
         self.monitors = []
 
-        self.rabbitmq_monitor = self.config['pywren'].get('rabbitmq_monitor', False)
+        self.rabbitmq_monitor = self.config['cloudbutton'].get('rabbitmq_monitor', False)
         if self.rabbitmq_monitor:
             self.rabbit_amqp_url = self.config['rabbitmq'].get('amqp_url')
 
@@ -360,7 +360,7 @@ class JobMonitor:
             th = Thread(target=self._job_monitoring_rabbitmq, args=(job,))
         else:
             th = Thread(target=self._job_monitoring_os, args=(job,))
-        if not self.is_pywren_function:
+        if not self.is_cloudbutton_function:
             th.daemon = True
         th.start()
 

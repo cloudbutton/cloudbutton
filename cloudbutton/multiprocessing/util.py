@@ -18,6 +18,8 @@ import threading        # we want threading to install it's
                         # cleanup function before multiprocessing does
 from subprocess import _args_from_interpreter_flags
 
+from cloudbutton.engine.config import get_default_config_filename, load_yaml_config
+
 from . import process
 
 __all__ = [
@@ -420,9 +422,6 @@ def spawnv_passfds(path, args, passfds):
         os.close(errpipe_read)
         os.close(errpipe_write)
 
-
-
-from pywren_ibm_cloud.config import get_default_config_filename, load_yaml_config
 
 #
 # Picklable redis client

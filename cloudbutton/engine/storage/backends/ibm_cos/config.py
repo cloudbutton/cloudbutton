@@ -2,7 +2,7 @@ def load_config(config_data):
     if 'ibm_cos' not in config_data:
         raise Exception("ibm_cos section is mandatory in the configuration")
 
-    if config_data['pywren']['compute_backend'] == 'ibm_cf':
+    if config_data['cloudbutton']['compute_backend'] == 'ibm_cf':
         # Private endpoint is mandatory when using IBM CF
         if 'private_endpoint' not in config_data['ibm_cos']:
             raise Exception('You must provide the private_endpoint to access to IBM COS')

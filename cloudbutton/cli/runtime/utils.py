@@ -14,8 +14,8 @@ def create_runtime(name, memory=None, config=None):
     compute_config = extract_compute_config(config)
     compute_handler = Compute(compute_config)
 
-    memory = config['pywren']['runtime_memory'] if not memory else memory
-    timeout = config['pywren']['runtime_timeout']
+    memory = config['cloudbutton']['runtime_memory'] if not memory else memory
+    timeout = config['cloudbutton']['runtime_timeout']
 
     logger.info('Creating runtime: {}, memory: {}'.format(name, memory))
 
@@ -35,7 +35,7 @@ def update_runtime(name, config=None):
     compute_config = extract_compute_config(config)
     compute_handler = Compute(compute_config)
 
-    timeout = config['pywren']['runtime_timeout']
+    timeout = config['cloudbutton']['runtime_timeout']
     logger.info('Updating runtime: {}'.format(name))
 
     runtimes = compute_handler.list_runtimes(name)

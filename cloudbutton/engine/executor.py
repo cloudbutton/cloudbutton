@@ -9,7 +9,7 @@ from cloudbutton.engine.storage.utils import delete_cloudobject
 from cloudbutton.engine.wait import wait_storage, wait_rabbitmq, ALL_COMPLETED
 from cloudbutton.engine.job import create_map_job, create_reduce_job, clean_job
 from cloudbutton.engine.config import default_config, extract_storage_config, default_logging_config
-from cloudbutton.engine.utils import timeout_handler, is_notebook, is_unix_system, is_pywren_function, create_executor_id
+from cloudbutton.engine.utils import timeout_handler, is_notebook, is_unix_system, is_cloudbutton_function, create_executor_id
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class FunctionExecutor:
 
         :return `FunctionExecutor` object.
         """
-        self.is_pywren_function = is_pywren_function()
+        self.is_cloudbutton_function = is_cloudbutton_function()
 
         # Log level Configuration
         self.log_level = log_level
@@ -44,7 +44,7 @@ class FunctionExecutor:
                 self.log_level = logging.getLevelName(logger.getEffectiveLevel())
         if self.log_level:
             os.environ["CLOUDBUTTON_LOGLEVEL"] = self.log_level
-            if not self.is_pywren_function:
+            if not self.is_cloudbutton_function:
                 default_logging_config(self.log_level)
 
         # Overwrite pywren config parameters
@@ -73,8 +73,8 @@ class FunctionExecutor:
         self.executor_id = create_executor_id()
         logger.debug('FunctionExecutor created with ID: {}'.format(self.executor_id))
 
-        self.data_cleaner = self.config['pywren'].get('data_cleaner', True)
-        self.rabbitmq_monitor = self.config['pywren'].get('rabbitmq_monitor', False)
+        self.data_cleaner = self.config['cloudbutton'].get('data_cleaner', True)
+        self.rabbitmq_monitor = self.config['cloudbutton'].get('rabbitmq_monitor', False)
 
         if self.rabbitmq_monitor:
             if 'rabbitmq' in self.config and 'amqp_url' in self.config['rabbitmq']:
@@ -315,7 +315,7 @@ class FunctionExecutor:
 
         pbar = None
         error = False
-        if not self.is_pywren_function and not self.log_level:
+        if not self.is_cloudbutton_function and not self.log_level:
             from tqdm.auto import tqdm
 
             if is_notebook():
@@ -360,7 +360,7 @@ class FunctionExecutor:
                 pbar.close()
                 if not is_notebook():
                     print()
-            if self.data_cleaner and not self.is_pywren_function:
+            if self.data_cleaner and not self.is_cloudbutton_function:
                 self.clean(cloudobjects=False, force=False, log=False)
             if not fs and error and is_notebook():
                 del self.futures[len(self.futures)-len(futures):]

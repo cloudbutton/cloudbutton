@@ -44,5 +44,5 @@ def clean_all(config=None):
     clean_bucket(sh, storage_config['bucket'], RUNTIMES_PREFIX, sleep=1)
     clean_bucket(sh, storage_config['bucket'], JOBS_PREFIX, sleep=1)
 
-    # Clean local pywren cache
+    # Clean local cloudbutton cache
     shutil.rmtree(CACHE_DIR, ignore_errors=True)

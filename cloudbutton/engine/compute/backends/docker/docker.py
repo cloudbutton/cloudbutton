@@ -40,7 +40,7 @@ class DockerBackend:
             except Exception:
                 pass
 
-        log_msg = 'PyWren v{} init for Docker - Host: {}'.format(__version__, self.host)
+        log_msg = 'Cloudbutton v{} init for Docker - Host: {}'.format(__version__, self.host)
         logger.info(log_msg)
         if not self.log_level:
             print(log_msg)

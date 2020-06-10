@@ -1,5 +1,5 @@
-import pywren_ibm_cloud as pywren
-from pywren_ibm_cloud.wait import ALL_COMPLETED, ANY_COMPLETED, ALWAYS
+import cloudbutton.engine as engine
+from cloudbutton.engine.wait import ALL_COMPLETED, ALWAYS
 
 from . import util
 
@@ -16,7 +16,7 @@ class Popen(object):
     def __init__(self, process_obj):
         util._flush_std_streams()
         self.returncode = None
-        self._executor = pywren.function_executor()
+        self._executor = engine.function_executor()
         self._launch(process_obj)
 
     def duplicate_for_child(self, fd):

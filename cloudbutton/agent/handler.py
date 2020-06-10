@@ -22,7 +22,7 @@ from cloudbutton.engine.storage.utils import create_output_key, create_status_ke
 logging.getLogger('pika').setLevel(logging.CRITICAL)
 logger = logging.getLogger('handler')
 
-PYWREN_LIBS_PATH = '/action/pywren_ibm_cloud/libs'
+LIBS_PATH = '/action/cloudbutton/engine/libs'
 
 
 def function_handler(event):
@@ -63,7 +63,7 @@ def function_handler(event):
     call_status.response['host_submit_tstamp'] = event['host_submit_tstamp']
     call_status.response['start_tstamp'] = start_tstamp
     context_dict = {
-        'python_version': os.environ.get("PYTHON_VERSION"),
+        'cloudbutton_version': os.environ.get("CLOUDBUTTON_VERSION"),
         'call_id': call_id,
         'job_id': job_id,
         'executor_id': executor_id,
@@ -74,18 +74,18 @@ def function_handler(event):
     show_memory_peak = strtobool(os.environ.get('SHOW_MEMORY_PEAK', 'False'))
 
     try:
-        if version.__version__ != event['pywren_version']:
-            msg = ("PyWren version mismatch. Host version: {} - Runtime version: {}"
-                   .format(event['pywren_version'], version.__version__))
+        if version.__version__ != event['cloudbutton_version']:
+            msg = ("Cloudbutton version mismatch. Host version: {} - Runtime version: {}"
+                   .format(event['cloudbutton_version'], version.__version__))
             raise RuntimeError('HANDLER', msg)
 
         # send init status event
         call_status.send('__init__')
 
         # call_status.response['free_disk_bytes'] = free_disk_space("/tmp")
-        custom_env = {'PYWREN_CONFIG': json.dumps(config),
-                      'PYWREN_EXECUTION_ID': exec_id,
-                      'PYTHONPATH': "{}:{}".format(os.getcwd(), PYWREN_LIBS_PATH)}
+        custom_env = {'CLOUDBUTTON_CONFIG': json.dumps(config),
+                      'CLOUDBUTTON_EXECUTION_ID': exec_id,
+                      'PYTHONPATH': "{}:{}".format(os.getcwd(), LIBS_PATH)}
         os.environ.update(custom_env)
 
         jobrunner_stats_dir = os.path.join(STORAGE_FOLDER,
@@ -95,7 +95,7 @@ def function_handler(event):
         os.makedirs(jobrunner_stats_dir, exist_ok=True)
         jobrunner_stats_filename = os.path.join(jobrunner_stats_dir, 'jobrunner.stats.txt')
 
-        jobrunner_config = {'pywren_config': config,
+        jobrunner_config = {'cloudbutton_config': config,
                             'call_id':  call_id,
                             'job_id':  job_id,
                             'executor_id':  executor_id,
@@ -182,9 +182,9 @@ def function_handler(event):
 
 class CallStatus:
 
-    def __init__(self, pywren_config, internal_storage):
-        self.config = pywren_config
-        self.rabbitmq_monitor = self.config['pywren'].get('rabbitmq_monitor', False)
+    def __init__(self, cloudbutton_config, internal_storage):
+        self.config = cloudbutton_config
+        self.rabbitmq_monitor = self.config['cloudbutton'].get('rabbitmq_monitor', False)
         self.store_status = strtobool(os.environ.get('__PW_STORE_STATUS', 'True'))
         self.internal_storage = internal_storage
         self.response = {'exception': False}
@@ -231,7 +231,7 @@ class CallStatus:
         status_sent = False
         output_query_count = 0
         params = pika.URLParameters(rabbit_amqp_url)
-        exchange = 'pywren-{}-{}'.format(executor_id, job_id)
+        exchange = 'cloudbutton-{}-{}'.format(executor_id, job_id)
 
         while not status_sent and output_query_count < 5:
             output_query_count = output_query_count + 1

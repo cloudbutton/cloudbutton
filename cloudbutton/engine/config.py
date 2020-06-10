@@ -64,7 +64,7 @@ def get_default_config_filename():
     if 'CLOUDBUTTON_CONFIG_FILE' in os.environ:
         config_filename = os.environ['CLOUDBUTTON_CONFIG_FILE']
 
-    elif os.path.exists(".pywren_config"):
+    elif os.path.exists(".cloudbutton_config"):
         config_filename = os.path.abspath('.cloudbutton_config')
 
     else:

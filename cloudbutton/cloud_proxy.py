@@ -70,3 +70,36 @@ def cloud_open(filename, mode='r', cloud_storage=None):
             return DelayedBytesBuffer(action)
         else:
             return DelayedStringBuffer(action)
+
+@property
+def os(self):
+    try:
+        return self._proxy
+    except AttributeError:
+        from .cloud_proxy import CloudFileProxy
+        self._proxy = CloudFileProxy(ctx=self.get_context())
+        return self._proxy
+
+def open(self, *args, **kwargs):
+    try:
+        kwargs['cloud_storage'] = self._storage
+        return self._open(*args, **kwargs)
+    except AttributeError:
+        # Could be an actual AttributeError
+        if hasattr(self, '_open'):
+            raise
+        else:          
+            from .cloud_proxy import cloud_open 
+            self._open = cloud_open
+            kwargs['cloud_storage'] = self._storage
+            return self._open(*args, **kwargs)
+
+@property
+def _storage(self):
+    # lazily created because we don't know if
+    # we will use it or if we have the config for it
+    try:
+        return self._lazy_storage
+    except AttributeError:
+        self._lazy_storage = self.CloudStorage()
+        return self._lazy_storage

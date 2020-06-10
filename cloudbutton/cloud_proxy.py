@@ -1,23 +1,27 @@
 import io
 import os as base_os
+from . import get_context
 from functools import partial
-from .util import get_cloud_storage_client
 
 
 class CloudFileProxy:
-    def __init__(self, cloud_storage=None):
-        self._storage = cloud_storage or get_cloud_storage_client()
+    def __init__(self, ctx=None):
+        # Use context storage because it is lazily created
+        # the first time it is used, and not when importing the module
+        self._ctx = ctx or get_context()
 
     def __getattr__(self, name):
         return getattr(base_os, name)
 
     def listdir(self, path=''):
+        storage = self._ctx._storage
+
         if path == '':
             prefix = path
         else:
             prefix = path if path.endswith('/') else path + '/'
 
-        paths = self._storage.list_tmp_data(prefix=prefix)
+        paths = storage.list_tmp_data(prefix=prefix)
         names = set()
         for p in paths:
             p = p[len(prefix):] if p.startswith(prefix) else p
@@ -27,7 +31,8 @@ class CloudFileProxy:
         return names
 
     def remove(self, key):
-        return self._storage.delete_cobject(key=key)
+        storage = self._ctx._storage
+        return storage.delete_cobject(key=key)
 
 
 class DelayedBytesBuffer(io.BytesIO):
@@ -51,7 +56,7 @@ class DelayedStringBuffer(io.StringIO):
 
 
 def cloud_open(filename, mode='r', cloud_storage=None):
-    storage = cloud_storage or get_cloud_storage_client()
+    storage = cloud_storage or get_context()._storage
     if 'r' in mode:
         if 'b' in mode:
             # we could get_data(stream=True) but some streams are not seekable

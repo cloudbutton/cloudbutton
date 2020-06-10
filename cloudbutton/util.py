@@ -421,13 +421,6 @@ def spawnv_passfds(path, args, passfds):
         os.close(errpipe_write)
 
 
-from pywren_ibm_cloud.config import (get_default_config_filename, 
-                                     load_yaml_config,
-                                     default_config,
-                                     extract_storage_config)
-from pywren_ibm_cloud.storage import InternalStorage
-import yaml
-
 #
 # Picklable redis client
 #
@@ -445,7 +438,16 @@ class PicklableRedis(redis.StrictRedis):
         self.__init__(*state[0], **state[1])
 
 
+from pywren_ibm_cloud.config import (get_default_config_filename,
+                                    default_config,
+                                    extract_storage_config)
+
 def get_default_config():
+    # this import must be in here otherwise functions
+    # will try to import yaml when importing
+    # this file (util.py)
+    from pywren_ibm_cloud.config import load_yaml_config
+
     config_file = get_default_config_filename()
     config = load_yaml_config(config_file)
     config = default_config(config)
@@ -460,6 +462,8 @@ def get_redis_client():
 #
 # Picklable cloud object storage client
 #
+
+from pywren_ibm_cloud.storage import InternalStorage
 
 class PicklableCloudStorage(InternalStorage):
     def __init__(self, *args, **kwargs):

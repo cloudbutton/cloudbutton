@@ -1,11 +1,11 @@
 import io
 import os as base_os
 from functools import partial
-from .engine.storage import InternalStorage
+from .engine.backends.storage import InternalStorage
 from .engine.utils import is_cloudbutton_function
-from .engine.config import (default_config,
-                            load_yaml_config, 
-                            extract_storage_config)
+from .config import (default_config,
+                    load_yaml_config, 
+                    extract_storage_config)
 
 
 #
@@ -51,7 +51,7 @@ class CloudFileProxy:
             splits = p.split('/')
             name = splits[0] + '/' if len(splits) > 1 else splits[0]
             names |= set([name])
-        return names
+        return list(names)
 
     def remove(self, key):
         self._storage.delete_cobject(key=key)
@@ -92,7 +92,20 @@ def cloud_open(filename, mode='r', cloud_storage=None):
         else:
             return DelayedStringBuffer(action)
 
+
 if not is_cloudbutton_function():
-    _storage = CloudStorage()
-    os = CloudFileProxy(_storage)
-    open = partial(cloud_open, cloud_storage=_storage)
+    try:
+        _storage = CloudStorage()
+    except FileNotFoundError:
+        # should never happen unless we are using
+        # this module classes for other purposes
+        os = None
+        open = None
+    else:
+        os = CloudFileProxy(_storage)
+        open = partial(cloud_open, cloud_storage=_storage)
+else:
+    # should never be used unless we explicitly import
+    # inside a function, which is not a good practice
+    os = None
+    open = None

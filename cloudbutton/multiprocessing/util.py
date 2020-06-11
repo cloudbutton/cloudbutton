@@ -438,7 +438,7 @@ class PicklableRedis(redis.StrictRedis):
         self.__init__(*state[0], **state[1])
 
 
-from cloudbutton.engine.config import default_config
+from cloudbutton.config import default_config
 
 def get_redis_client():
     conn_params = default_config()['redis']

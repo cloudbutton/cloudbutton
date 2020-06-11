@@ -1,4 +1,4 @@
-from cloudbutton import os, open
+from cloudbutton.cloud_proxy import os, open
 
 if __name__ == "__main__":
     filepath = 'bar/foo.txt'

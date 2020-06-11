@@ -1,9 +1,10 @@
 import logging
 import requests
-from cloudbutton.engine import utils
 from multiprocessing.pool import ThreadPool
-from cloudbutton.engine.storage import Storage
-from cloudbutton.engine.storage.utils import CloudObject, CloudObjectUrl
+
+from cloudbutton.engine import utils
+from cloudbutton.engine.backends.storage import Storage
+from cloudbutton.engine.backends.storage.utils import CloudObject, CloudObjectUrl
 
 logger = logging.getLogger(__name__)
 

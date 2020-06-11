@@ -9,11 +9,12 @@ from threading import Thread
 from types import SimpleNamespace
 from multiprocessing import Process, Queue, Value
 from concurrent.futures import ThreadPoolExecutor
-from cloudbutton.engine.compute import Compute
-from cloudbutton.version import __version__
+
+from cloudbutton.engine.backends.compute import Compute
 from cloudbutton.engine.future import ResponseFuture
-from cloudbutton.engine.config import extract_storage_config, extract_compute_config
 from cloudbutton.engine.utils import version_str, is_cloudbutton_function, is_unix_system
+from cloudbutton.version import __version__
+from cloudbutton.config import extract_storage_config, extract_compute_config
 
 
 logger = logging.getLogger(__name__)

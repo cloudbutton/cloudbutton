@@ -19,7 +19,7 @@ import itertools
 import collections
 import time
 import traceback
-import cloudbutton.engine as engine
+from cloudbutton.engine.executor import FunctionExecutor
 
 # If threading is available then ThreadPool should be provided.  Therefore
 # we avoid top-level imports which are liable to fail on some systems.
@@ -169,15 +169,15 @@ class Pool(object):
 
         if processes is not None:
             if self._initargs:
-                self._executor = engine.function_executor(workers=processes, **self._initargs)
+                self._executor = FunctionExecutor(workers=processes, **self._initargs)
             else:
-                self._executor = engine.function_executor(workers=processes)
+                self._executor = FunctionExecutor(workers=processes)
             self._processes = processes
         else:
             if self._initargs:
-                self._executor = engine.function_executor(**self._initargs)
+                self._executor = FunctionExecutor(**self._initargs)
             else:
-                self._executor = engine.function_executor()
+                self._executor = FunctionExecutor()
             self._processes = self._executor.invoker.workers
 
         if initializer is not None and not callable(initializer):

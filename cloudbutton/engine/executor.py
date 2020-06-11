@@ -3,13 +3,15 @@ import copy
 import signal
 import logging
 from functools import partial
+
 from cloudbutton.engine.invoker import FunctionInvoker
-from cloudbutton.engine.storage import InternalStorage
-from cloudbutton.engine.storage.utils import delete_cloudobject
+from cloudbutton.engine.backends.storage import InternalStorage
+from cloudbutton.engine.backends.storage.utils import delete_cloudobject
 from cloudbutton.engine.wait import wait_storage, wait_rabbitmq, ALL_COMPLETED
 from cloudbutton.engine.job import create_map_job, create_reduce_job, clean_job
-from cloudbutton.engine.config import default_config, extract_storage_config, default_logging_config
-from cloudbutton.engine.utils import timeout_handler, is_notebook, is_unix_system, is_cloudbutton_function, create_executor_id
+from cloudbutton.engine.utils import timeout_handler, is_notebook, is_unix_system, \
+    is_cloudbutton_function, create_executor_id
+from cloudbutton.config import default_config, extract_storage_config, default_logging_config
 
 logger = logging.getLogger(__name__)
 
@@ -429,7 +431,7 @@ class FunctionExecutor:
             return
 
         logging.getLogger('matplotlib').setLevel(logging.WARNING)
-        from pywren_ibm_cloud.plots import create_timeline, create_histogram
+        from .plots import create_timeline, create_histogram
 
         msg = 'ExecutorID {} - Creating execution plots'.format(self.executor_id)
         print(msg) if not self.log_level else logger.info(msg)

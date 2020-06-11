@@ -5,12 +5,13 @@ import textwrap
 import pickle
 import logging
 import tempfile
+
 from cloudbutton.engine import utils
+from cloudbutton.config import MAX_AGG_DATA_SIZE, JOBS_PREFIX
 from cloudbutton.engine.job.partitioner import create_partitions
-from cloudbutton.engine.utils import is_object_processing_function, sizeof_fmt
-from cloudbutton.engine.storage.utils import create_func_key, create_agg_data_key
 from cloudbutton.engine.job.serialize import SerializeIndependent, create_module_data
-from cloudbutton.engine.config import MAX_AGG_DATA_SIZE, JOBS_PREFIX
+from cloudbutton.engine.backends.storage.utils import create_func_key, create_agg_data_key
+
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ def create_map_job(config, internal_storage, executor_id, job_id, map_function, 
 
     # Object processing functionality
     parts_per_object = None
-    if is_object_processing_function(map_function):
+    if utils.is_object_processing_function(map_function):
         # Create partitions according chunk_size or chunk_number
         logger.debug('ExecutorID {} | JobID {} - Calling map on partitions '
                      'from object storage flow'.format(executor_id, job_id))
@@ -182,7 +183,7 @@ def _create_job(config, internal_storage, executor_id, job_id, func, data, runti
 
     if data_limit and data_size_bytes > data_limit*1024**2:
         log_msg = ('ExecutorID {} | JobID {} - Total data exceeded maximum size '
-                   'of {}'.format(executor_id, job_id, sizeof_fmt(data_limit*1024**2)))
+                   'of {}'.format(executor_id, job_id, utils.sizeof_fmt(data_limit*1024**2)))
         raise Exception(log_msg)
 
     log_msg = ('ExecutorID {} | JobID {} - Uploading function and data '
@@ -223,9 +224,9 @@ def clean_job(jobs_to_clean, storage_config, clean_cloudobjects):
         jobs_path = temp.name
 
     script = """
-    from cloudbutton.engine.storage import InternalStorage
-    from cloudbutton.engine.storage.utils import clean_bucket
-    from cloudbutton.engine.config import JOBS_PREFIX, TEMP_PREFIX
+    from cloudbutton.engine.backends.storage import InternalStorage
+    from cloudbutton.engine.backends.storage.utils import clean_bucket
+    from cloudbutton.config import JOBS_PREFIX, TEMP_PREFIX
     import pickle
     import os
 

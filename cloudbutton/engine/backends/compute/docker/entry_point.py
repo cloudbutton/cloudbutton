@@ -7,8 +7,8 @@ import pkgutil
 import multiprocessing
 
 from cloudbutton.version import __version__
-from cloudbutton.agent import function_invoker
-from cloudbutton.engine.config import DOCKER_FOLDER
+from cloudbutton.engine.agent import function_invoker
+from cloudbutton.config import DOCKER_FOLDER
 
 
 log_file = os.path.join(DOCKER_FOLDER, 'proxy.log')

@@ -17,7 +17,7 @@
 import json
 import logging
 import requests
-from cloudbutton.engine.storage.utils import StorageNoSuchKeyError
+from cloudbutton.engine.backends.storage.utils import StorageNoSuchKeyError
 from cloudbutton.engine.utils import sizeof_fmt
 
 

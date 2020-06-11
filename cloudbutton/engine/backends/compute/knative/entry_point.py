@@ -5,9 +5,9 @@ import flask
 import logging
 import pkgutil
 from cloudbutton.version import __version__
-from cloudbutton.engine.config import cloud_logging_config
-from cloudbutton.agent import function_handler
-from cloudbutton.agent import function_invoker
+from cloudbutton.config import cloud_logging_config
+from cloudbutton.engine.agent import function_handler
+from cloudbutton.engine.agent import function_invoker
 
 cloud_logging_config(logging.INFO)
 logger = logging.getLogger('__main__')

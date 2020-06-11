@@ -2,8 +2,8 @@ import os
 import io
 import shutil
 import logging
-from cloudbutton.engine.storage.utils import StorageNoSuchKeyError
-from cloudbutton.engine.config import STORAGE_FOLDER
+from cloudbutton.engine.backends.storage.utils import StorageNoSuchKeyError
+from cloudbutton.config import STORAGE_FOLDER
 
 
 logger = logging.getLogger(__name__)

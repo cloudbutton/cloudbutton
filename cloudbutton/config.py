@@ -115,12 +115,12 @@ def default_config(config_data=None, config_overwrite={}):
 
     cb = config_data['cloudbutton']['compute_backend']
     logger.debug("Loading Compute backend module: {}".format(cb))
-    cb_config = importlib.import_module('cloudbutton.engine.compute.backends.{}.config'.format(cb))
+    cb_config = importlib.import_module('cloudbutton.engine.backends.compute.{}.config'.format(cb))
     cb_config.load_config(config_data)
 
     sb = config_data['cloudbutton']['storage_backend']
     logger.debug("Loading Storage backend module: {}".format(sb))
-    sb_config = importlib.import_module('cloudbutton.engine.storage.backends.{}.config'.format(sb))
+    sb_config = importlib.import_module('cloudbutton.engine.backends.storage.{}.config'.format(sb))
     sb_config.load_config(config_data)
 
     return config_data

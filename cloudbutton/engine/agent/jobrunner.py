@@ -1,19 +1,3 @@
-#
-# (C) Copyright PyWren Team
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-
 import os
 import sys
 import pika
@@ -26,13 +10,14 @@ import requests
 import traceback
 import numpy as np
 from distutils.util import strtobool
-from cloudbutton.engine.storage import Storage
+
+from cloudbutton.engine.backends.storage import Storage
 from cloudbutton.engine.wait import wait_storage
 from cloudbutton.engine.future import ResponseFuture
 from cloudbutton.engine.libs.tblib import pickling_support
 from cloudbutton.engine.utils import sizeof_fmt, b64str_to_bytes, is_object_processing_function
 from cloudbutton.engine.utils import WrappedStreamingBodyPartition
-from cloudbutton.engine.config import cloud_logging_config
+from cloudbutton.config import cloud_logging_config
 
 from pydoc import locate
 

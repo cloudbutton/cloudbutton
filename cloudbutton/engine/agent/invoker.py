@@ -4,12 +4,13 @@ import logging
 import random
 from types import SimpleNamespace
 from multiprocessing import Process, Queue
-from cloudbutton.engine.compute import Compute
-from cloudbutton.engine.invoker import JobMonitor
-from cloudbutton.engine.storage import InternalStorage
-from cloudbutton.version import __version__
 from concurrent.futures import ThreadPoolExecutor
-from cloudbutton.engine.config import cloud_logging_config, extract_compute_config, extract_storage_config
+
+from cloudbutton.engine.backends.compute import Compute
+from cloudbutton.engine.invoker import JobMonitor
+from cloudbutton.engine.backends.storage import InternalStorage
+from cloudbutton.version import __version__
+from cloudbutton.config import cloud_logging_config, extract_compute_config, extract_storage_config
 
 logging.getLogger('pika').setLevel(logging.CRITICAL)
 logger = logging.getLogger('invoker')

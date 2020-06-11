@@ -13,8 +13,8 @@ import multiprocessing
 from . import config as docker_config
 from cloudbutton.engine.utils import version_str, is_unix_system
 from cloudbutton.version import __version__
-from cloudbutton.engine.config import TEMP, DOCKER_BASE_FOLDER, DOCKER_FOLDER
-from cloudbutton.engine.compute.utils import create_function_handler_zip
+from cloudbutton.config import TEMP, DOCKER_BASE_FOLDER, DOCKER_FOLDER
+from cloudbutton.engine.backends.compute.utils import create_function_handler_zip
 
 logging.getLogger('urllib3.connectionpool').setLevel(logging.CRITICAL)
 logger = logging.getLogger(__name__)

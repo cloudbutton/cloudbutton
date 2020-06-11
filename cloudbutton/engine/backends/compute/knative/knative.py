@@ -13,8 +13,8 @@ from urllib.parse import urlparse
 from kubernetes import client, config, watch
 from cloudbutton.engine.utils import version_str
 from cloudbutton.version import __version__
-from cloudbutton.engine.config import CACHE_DIR, load_yaml_config, dump_yaml_config
-from cloudbutton.engine.compute.utils import create_function_handler_zip
+from cloudbutton.config import CACHE_DIR, load_yaml_config, dump_yaml_config
+from cloudbutton.engine.backends.compute.utils import create_function_handler_zip
 from . import config as kconfig
 
 urllib3.disable_warnings()

@@ -20,9 +20,9 @@ import ibm_boto3
 import ibm_botocore
 from datetime import datetime, timezone
 from ibm_botocore.credentials import DefaultTokenManager
-from cloudbutton.engine.storage.utils import StorageNoSuchKeyError
+from cloudbutton.engine.backends.storage.utils import StorageNoSuchKeyError
 from cloudbutton.engine.utils import sizeof_fmt, is_cloudbutton_function
-from cloudbutton.engine.config import CACHE_DIR, load_yaml_config, dump_yaml_config
+from cloudbutton.config import CACHE_DIR, load_yaml_config, dump_yaml_config
 
 
 logging.getLogger('ibm_boto3').setLevel(logging.CRITICAL)

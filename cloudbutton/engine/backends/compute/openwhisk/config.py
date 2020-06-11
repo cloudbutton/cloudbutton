@@ -1,6 +1,6 @@
 import os
 import sys
-from pywren_ibm_cloud.utils import version_str
+from cloudbutton.engine.utils import version_str
 
 RUNTIME_DEFAULT = {'3.5': 'ibmfunctions/pywren:3.5',
                    '3.6': 'ibmfunctions/action-python-v3.6',

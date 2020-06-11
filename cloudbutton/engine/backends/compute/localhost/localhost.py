@@ -7,8 +7,8 @@ from multiprocessing import Process, Queue
 from threading import Thread
 from cloudbutton.version import __version__
 from cloudbutton.engine.utils import version_str, is_unix_system
-from cloudbutton.agent import function_handler
-from cloudbutton.engine.config import STORAGE_FOLDER, LOGS_PREFIX
+from cloudbutton.engine.agent import function_handler
+from cloudbutton.config import STORAGE_FOLDER, LOGS_PREFIX
 
 
 logger = logging.getLogger(__name__)

@@ -3,79 +3,68 @@
 #### The Cloudbutton Toolkit is a Python multicloud library for running serverless jobs   
 It currently supports AWS Lambda, IBM Cloud Functions, Google Cloud Functions, Azure Functions, Aliyun Function Compute, and Knative.
 
-### Getting started
-Map Python functions using a pool of workers  
+### Quick start
+Run functions in the cloud using the [multiprocessing](https://docs.python.org/2/library/multiprocessing.html) API:
 
    ```python
-    from cloudbutton import Pool
-    from random import random
+    from cloudbutton.multiprocessing import Pool
+    
+    def incr(x):
+        return x + 1
 
-    SAMPLES = int(1e6)
-
-    def is_in(p):
-        x, y = random(), random()
-        return x * x + y * y < 1
-
-    if __name__ == '__main__':
-        pool = Pool(processes=4)
-        res = pool.map(is_in, range(SAMPLES))
-        pi = 4.0 * sum(res) / SAMPLES
-        print(f'Pi is roughly {pi}')
+    pool = Pool()
+    res = pool.map(incr, range(10))
+    print(res)
    ```
 
-Use cloud storage as a filesystem for shared memory  
+Use cloud storage as a filesystem:  
 
    ```python
-    from cloudbutton import Pool, os, open
-    from random import choice
+    from cloudbutton.multiprocessing import Pool
+    from cloudbutton.cloud_proxy import os, open
 
-    TEXT_LENGTH = int(1e6)
+    filename = 'bar/foo.txt'
+    with open(filename, 'w') as f:
+        f.write('Hello world!')
 
-    def count_char(char, filename):
-        with open(filename, 'r') as f:
-            text = f.read()
-        count = text.count(char)
-        return (char, count)
+    dirname = os.path.dirname(filename)
+    print(os.listdir(dirname))
 
-    if __name__ == "__main__":
-        alphabet = 'abcdefghijklmnopqrstuvwxyz'
-        text = ''.join([choice(alphabet) for _ in range(TEXT_LENGTH)])
-        
-        filename = 'random_text.txt'
-        with open(filename, 'w') as f:
-            f.write(text)
+    def read_file(filename):
+        with open(filename) as f:
+            return f.read()
 
-        pool = Pool()
-        res = pool.map(count_char, [(char, filename) for char in alphabet])
-        print(res)
-        os.remove(filename)
+    pool = Pool()
+    res = pool.apply(read_file, (filename,))
+    print(res)
+
+    os.remove(filename)
+    print(os.listdir(dirname))
    ```
 
 Use remote in-memory cache for fast IPC and synchronization  
 
    ```python
-    from cloudbutton import Pool, Manager, Lock
+    from cloudbutton.multiprocessing import Pool, Manager, Lock
     from random import choice
 
-    def count_multiples(num, sequence, record, lock):
-        count = 0
-        for x in sequence:
-            if x % num == 0:
-                count += 1
-        record[num] = count
+    def count_chars(char, text, record, lock):
+        count = text.count(char)
+        record[char] = count
         with lock:
-            record['total'] += count 
+            record['total'] += count
 
-    if __name__ == "__main__":
-        pool = Pool()
-        record = Manager().dict()
-        lock = Lock()
+    pool = Pool()
+    record = Manager().dict()
+    lock = Lock()
 
-        sequence = range(1, 1000001)
-        record['total'] = 0
+    # random text
+    alphabet = 'abcdefghijklmnopqrstuvwxyz'
+    text = ''.join([choice(alphabet) for _ in range(1000)])
 
-        pool.map(count_multiples, [(i, sequence, record, lock) for i in range(1, 11)])
-        print(record.todict())
+    record['total'] = 0
+    pool.map(count_chars, [(char, text, record, lock) for char in alphabet])
+    print(record.todict())
    ```
 
 ## Documentation

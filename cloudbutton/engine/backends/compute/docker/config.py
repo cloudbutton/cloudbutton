@@ -14,21 +14,21 @@ FH_ZIP_LOCATION = os.path.join(os.getcwd(), 'pywren_docker.zip')
 
 
 def load_config(config_data):
-    if 'runtime_memory' not in config_data['pywren']:
-        config_data['pywren']['runtime_memory'] = None
-    if 'runtime_timeout' not in config_data['pywren']:
-        config_data['pywren']['runtime_timeout'] = RUNTIME_TIMEOUT_DEFAULT
-    if 'runtime' not in config_data['pywren']:
+    if 'runtime_memory' not in config_data['cloudbutton']:
+        config_data['cloudbutton']['runtime_memory'] = None
+    if 'runtime_timeout' not in config_data['cloudbutton']:
+        config_data['cloudbutton']['runtime_timeout'] = RUNTIME_TIMEOUT_DEFAULT
+    if 'runtime' not in config_data['cloudbutton']:
         python_version = version_str(sys.version_info)
         try:
-            config_data['pywren']['runtime'] = RUNTIME_DEFAULT[python_version]
+            config_data['cloudbutton']['runtime'] = RUNTIME_DEFAULT[python_version]
         except KeyError:
             raise Exception('Unsupported Python version: {}'.format(python_version))
 
-    config_data['pywren']['remote_invoker'] = True
+    config_data['cloudbutton']['remote_invoker'] = True
 
-    if 'storage_backend' not in config_data['pywren']:
-        config_data['pywren']['storage_backend'] = 'localhost'
+    if 'storage_backend' not in config_data['cloudbutton']:
+        config_data['cloudbutton']['storage_backend'] = 'localhost'
 
     if 'docker' not in config_data:
         config_data['docker'] = {'host': 'localhost'}
@@ -37,11 +37,11 @@ def load_config(config_data):
         if 'ssh_user' not in config_data['docker'] or 'ssh_password' not in config_data['docker']:
             raise Exception('You must provide ssh credentials to access to the remote host')
 
-        if config_data['pywren']['storage_backend'] == 'localhost':
+        if config_data['cloudbutton']['storage_backend'] == 'localhost':
             raise Exception('Localhost storage backend is not supported for Docker remote host')
 
-    if 'workers' not in config_data['pywren']:
-        config_data['pywren']['workers'] = None
+    if 'workers' not in config_data['cloudbutton']:
+        config_data['cloudbutton']['workers'] = None
 
     if 'ibm_cos' in config_data and 'private_endpoint' in config_data['ibm_cos']:
         del config_data['ibm_cos']['private_endpoint']

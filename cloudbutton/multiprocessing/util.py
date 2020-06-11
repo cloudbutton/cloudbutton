@@ -438,42 +438,11 @@ class PicklableRedis(redis.StrictRedis):
         self.__init__(*state[0], **state[1])
 
 
-from cloudbutton.engine.config import default_config, extract_storage_config
-
-def get_default_config(config=None):
-    return default_config(config)
-
+from cloudbutton.engine.config import default_config
 
 def get_redis_client():
-    conn_params = get_default_config()['redis']
+    conn_params = default_config()['redis']
     return PicklableRedis(**conn_params)
-
-
-#
-# Picklable cloud object storage client
-#
-
-from cloudbutton.engine.storage import InternalStorage
-
-class PicklableCloudStorage(InternalStorage):
-    def __init__(self, *args, **kwargs):
-        self._args = args
-        self._kwargs = kwargs
-        super().__init__(*self._args, **self._kwargs)
-
-    def __getstate__(self):
-        return (self._args, self._kwargs)
-
-    def __setstate__(self, state):
-        self.__init__(*state[0], **state[1])
-
-
-def get_cloud_storage_client(config=None):
-    if config is None:
-        config = get_default_config()
-    storage_config = extract_storage_config(config)
-    return PicklableCloudStorage(storage_config)
-
 
 
 #

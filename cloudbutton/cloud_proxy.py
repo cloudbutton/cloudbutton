@@ -1,27 +1,50 @@
 import io
 import os as base_os
-from . import get_context
 from functools import partial
+from .engine.storage import InternalStorage
+from .engine.utils import is_cloudbutton_function
+from .engine.config import (default_config,
+                            load_yaml_config, 
+                            extract_storage_config)
+
+
+#
+# Picklable cloud object storage client
+#
+
+class CloudStorage(InternalStorage):
+    def __init__(self, config=None):
+        if isinstance(config, str):
+            config = load_yaml_config(config)
+            self._config = extract_storage_config(config)
+        else:
+            self._config = config or extract_storage_config(default_config())
+        super().__init__(self._config)
+
+    def __getstate__(self):
+        return self._config
+
+    def __setstate__(self, state):
+        self.__init__(state)
+
+    def list_keys(self, prefix=None):
+        return self.storage_handler.list_keys(self.bucket, prefix)
 
 
 class CloudFileProxy:
-    def __init__(self, ctx=None):
-        # Use context storage because it is lazily created
-        # the first time it is used, and not when importing the module
-        self._ctx = ctx or get_context()
+    def __init__(self, cloud_storage=None):
+        self._storage = cloud_storage or CloudStorage()
 
     def __getattr__(self, name):
         return getattr(base_os, name)
 
     def listdir(self, path=''):
-        storage = self._ctx._storage
-
         if path == '':
             prefix = path
         else:
             prefix = path if path.endswith('/') else path + '/'
 
-        paths = storage.list_tmp_data(prefix=prefix)
+        paths = self._storage.list_keys(prefix=prefix)
         names = set()
         for p in paths:
             p = p[len(prefix):] if p.startswith(prefix) else p
@@ -31,8 +54,7 @@ class CloudFileProxy:
         return names
 
     def remove(self, key):
-        storage = self._ctx._storage
-        return storage.delete_cobject(key=key)
+        self._storage.delete_cobject(key=key)
 
 
 class DelayedBytesBuffer(io.BytesIO):
@@ -54,9 +76,8 @@ class DelayedStringBuffer(io.StringIO):
         self._action(self.getvalue())
         io.StringIO.close(self)
 
-
 def cloud_open(filename, mode='r', cloud_storage=None):
-    storage = cloud_storage or get_context()._storage
+    storage = cloud_storage or CloudStorage()
     if 'r' in mode:
         if 'b' in mode:
             # we could get_data(stream=True) but some streams are not seekable
@@ -71,40 +92,7 @@ def cloud_open(filename, mode='r', cloud_storage=None):
         else:
             return DelayedStringBuffer(action)
 
-
-def CloudStorage(self, config=None):
-    from .util import get_cloud_storage_client
-    return get_cloud_storage_client(config)
-
-@property
-def os(self):
-    try:
-        return self._proxy
-    except AttributeError:
-        from .cloud_proxy import CloudFileProxy
-        self._proxy = CloudFileProxy(ctx=self.get_context())
-        return self._proxy
-
-def open(self, *args, **kwargs):
-    try:
-        kwargs['cloud_storage'] = self._storage
-        return self._open(*args, **kwargs)
-    except AttributeError:
-        # Could be an actual AttributeError
-        if hasattr(self, '_open'):
-            raise
-        else:          
-            from .cloud_proxy import cloud_open 
-            self._open = cloud_open
-            kwargs['cloud_storage'] = self._storage
-            return self._open(*args, **kwargs)
-
-@property
-def _storage(self):
-    # lazily created because we don't know if
-    # we will use it or if we have the config for it
-    try:
-        return self._lazy_storage
-    except AttributeError:
-        self._lazy_storage = self.CloudStorage()
-        return self._lazy_storage
+if not is_cloudbutton_function():
+    _storage = CloudStorage()
+    os = CloudFileProxy(_storage)
+    open = partial(cloud_open, cloud_storage=_storage)

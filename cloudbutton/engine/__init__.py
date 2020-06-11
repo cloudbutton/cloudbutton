@@ -1,24 +1,4 @@
-#
-# (C) Copyright IBM Corp. 2019
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-
-import tempfile
-from cloudbutton.engine.executor import FunctionExecutor
-from cloudbutton.version import __version__
-
-name = "cloudbutton"
+from .executor import FunctionExecutor
 
 
 def ibm_cf_executor(config=None, runtime=None, runtime_memory=None,
@@ -125,7 +105,7 @@ def docker_executor(config=None, runtime=None, workers=None,
                     storage_backend=None, storage_backend_region=None,
                     rabbitmq_monitor=None, log_level=None):
     """
-    Localhost function executor
+    Docker function executor
     """
     compute_backend = 'docker'
 

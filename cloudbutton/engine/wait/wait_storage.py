@@ -6,8 +6,9 @@ import random
 import logging
 from threading import Thread
 from multiprocessing.pool import ThreadPool
-from cloudbutton.engine.storage.utils import create_status_key
-from cloudbutton.engine.config import JOBS_PREFIX
+
+from cloudbutton.engine.backends.storage.utils import create_status_key
+from cloudbutton.config import JOBS_PREFIX
 
 
 logger = logging.getLogger(__name__)

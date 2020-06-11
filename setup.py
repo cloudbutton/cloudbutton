@@ -8,7 +8,7 @@ setup(
     url='https://github.com/cloudbutton/cloudbutton',
     author='Cloudbutton Team',
     description='Run multiprocessing-like applications in the Cloud',
-    long_description="A multicloud python framewrok for transparently running multiprocessing-like applications",
+    long_description="A python framewrok for transparently running multiprocessing-like applications in any Cloud",
     author_email='cloudlab@urv.cat',
     packages=find_packages(),
     install_requires=['redis'],

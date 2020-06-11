@@ -4,7 +4,7 @@ import logging
 import cloudbutton.engine as eng
 from cloudbutton.cli.runtime.cli import runtime
 from cloudbutton.cli import clean_all
-from cloudbutton.engine.tests import print_help, run_tests
+from cloudbutton.tests import print_help, run_tests
 
 
 def set_debug(debug):

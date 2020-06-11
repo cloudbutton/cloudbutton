@@ -1,4 +1,4 @@
-import cloudbutton.engine as engine
+from cloudbutton.engine.executor import FunctionExecutor
 from cloudbutton.engine.wait import ALL_COMPLETED, ALWAYS
 
 from . import util
@@ -16,7 +16,7 @@ class Popen(object):
     def __init__(self, process_obj):
         util._flush_std_streams()
         self.returncode = None
-        self._executor = engine.function_executor()
+        self._executor = FunctionExecutor()
         self._launch(process_obj)
 
     def duplicate_for_child(self, fd):

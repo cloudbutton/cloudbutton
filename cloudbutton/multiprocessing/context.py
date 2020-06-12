@@ -50,15 +50,6 @@ class BaseContext(object):
         else:
             return num
     """
-    def CloudStorage(self, config=None):
-        from .util import get_cloud_storage_client
-        return get_cloud_storage_client(config)
-
-    def CloudFileProxy(self, config=None):
-        from .cloud_proxy import CloudFileProxy
-        cs = self.CloudStorage(config)
-        return CloudFileProxy(cloud_storage=cs)
-
     def Manager(self):
         '''Returns a manager associated with a running server process
         The managers methods such as `Lock()`, `Condition()` and `Queue()`
@@ -128,7 +119,6 @@ class BaseContext(object):
         from .pool import Pool
         return Pool(processes, initializer, initargs, maxtasksperchild,
                     context=self.get_context())
-
     """
     def RawValue(self, typecode_or_type, *args):
         '''Returns a shared object'''
@@ -235,7 +225,7 @@ class BaseContext(object):
         pass
 
     def getpid(self):
-        executor_id, job_id, call_id = os.environ.get('PYWREN_EXECUTION_ID').rsplit('/', 2)
+        executor_id, job_id, call_id = os.environ.get('CLOUDBUTTON_EXECUTION_ID').rsplit('/', 2)
         return call_id
 
 

@@ -24,7 +24,7 @@ __all__ = [
     'sub_debug', 'debug', 'info', 'sub_warning', 'get_logger',
     'log_to_stderr', 'get_temp_dir', 'register_after_fork',
     'is_exiting', 'Finalize', 'ForkAwareThreadLock', 'ForkAwareLocal',
-    'close_all_fds_except', 'SUBDEBUG', 'SUBWARNING', 'get_redis_conn_params'
+    'close_all_fds_except', 'SUBDEBUG', 'SUBWARNING'
     ]
 
 #
@@ -421,13 +421,6 @@ def spawnv_passfds(path, args, passfds):
         os.close(errpipe_write)
 
 
-from pywren_ibm_cloud.config import (get_default_config_filename, 
-                                     load_yaml_config,
-                                     default_config,
-                                     extract_storage_config)
-from pywren_ibm_cloud.storage import InternalStorage
-import yaml
-
 #
 # Picklable redis client
 #
@@ -445,41 +438,11 @@ class PicklableRedis(redis.StrictRedis):
         self.__init__(*state[0], **state[1])
 
 
-def get_default_config():
-    config_file = get_default_config_filename()
-    config = load_yaml_config(config_file)
-    config = default_config(config)
-    return config
-
+from cloudbutton.config import default_config
 
 def get_redis_client():
-    conn_params = get_default_config()['redis']
+    conn_params = default_config()['redis']
     return PicklableRedis(**conn_params)
-
-
-#
-# Picklable cloud object storage client
-#
-
-class PicklableCloudStorage(InternalStorage):
-    def __init__(self, *args, **kwargs):
-        self._args = args
-        self._kwargs = kwargs
-        super().__init__(*self._args, **self._kwargs)
-
-    def __getstate__(self):
-        return (self._args, self._kwargs)
-
-    def __setstate__(self, state):
-        self.__init__(*state[0], **state[1])
-
-
-def get_cloud_storage_client(config=None):
-    if config is None:
-        config = get_default_config()
-    storage_config = extract_storage_config(config)
-    return PicklableCloudStorage(storage_config)
-
 
 
 #

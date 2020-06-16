@@ -36,7 +36,7 @@ def function_handler(event):
     extra_env = event.get('extra_env', {})
     os.environ.update(extra_env)
 
-    os.environ.update({'PYWREN_FUNCTION': 'True',
+    os.environ.update({'CLOUDBUTTON_FUNCTION': 'True',
                        'PYTHONUNBUFFERED': 'True'})
 
     config = event['config']

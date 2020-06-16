@@ -23,20 +23,20 @@ def load_config(config_data):
     if not set(required_keys) <= set(config_data['openwhisk']):
         raise Exception('You must provide {} to access to openwhisk'.format(required_keys))
 
-    if 'runtime_memory' not in config_data['pywren']:
-        config_data['pywren']['runtime_memory'] = RUNTIME_MEMORY_DEFAULT
-    if 'runtime_timeout' not in config_data['pywren']:
-        config_data['pywren']['runtime_timeout'] = RUNTIME_TIMEOUT_DEFAULT
+    if 'runtime_memory' not in config_data['cloudbutton']:
+        config_data['cloudbutton']['runtime_memory'] = RUNTIME_MEMORY_DEFAULT
+    if 'runtime_timeout' not in config_data['cloudbutton']:
+        config_data['cloudbutton']['runtime_timeout'] = RUNTIME_TIMEOUT_DEFAULT
 
-    if 'runtime' not in config_data['pywren']:
+    if 'runtime' not in config_data['cloudbutton']:
         python_version = version_str(sys.version_info)
         try:
-            config_data['pywren']['runtime'] = RUNTIME_DEFAULT[python_version]
+            config_data['cloudbutton']['runtime'] = RUNTIME_DEFAULT[python_version]
         except KeyError:
             raise Exception('Unsupported Python version: {}'.format(python_version))
 
-    if 'workers' not in config_data['pywren']:
-        config_data['pywren']['workers'] = CONCURRENT_WORKERS_DEFAULT
+    if 'workers' not in config_data['cloudbutton']:
+        config_data['cloudbutton']['workers'] = CONCURRENT_WORKERS_DEFAULT
 
     if 'ibm_cos' in config_data and 'private_endpoint' in config_data['ibm_cos']:
         del config_data['ibm_cos']['private_endpoint']

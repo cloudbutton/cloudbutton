@@ -51,7 +51,7 @@ class Storage:
         :param key: destination key
         :return: CloudObject instance
         """
-        prefix = os.environ.get('PYWREN_EXECUTION_ID', '')
+        prefix = os.environ.get('CLOUDBUTTON_EXECUTION_ID', '')
         coid = uuid_str().replace('/', '')[:4]
         name = '{}/cloudobject_{}'.format(prefix, coid)
         key = key or '/'.join([TEMP_PREFIX, name])
@@ -173,7 +173,7 @@ class InternalStorage:
         :param key: destination key
         :return: CloudObject instance
         """
-        prefix = os.environ.get('PYWREN_EXECUTION_ID', '')
+        prefix = os.environ.get('CLOUDBUTTON_EXECUTION_ID', '')
         coid = uuid_str().replace('/', '')[:4]
         name = '{}/cloudobject_{}'.format(prefix, coid)
         key = key or '/'.join([TEMP_PREFIX, name])

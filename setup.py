@@ -11,7 +11,12 @@ setup(
     long_description="A python framewrok for transparently running multiprocessing-like applications in any Cloud",
     author_email='cloudlab@urv.cat',
     packages=find_packages(),
-    install_requires=['redis'],
+    install_requires=[
+        'wheel', 'Click', 'pandas', 'PyYAML', 'python-dateutil',
+        'pika==0.13.1', 'enum34', 'glob2', 'tqdm', 'lxml',
+        'tblib', 'docker', 'requests', 'seaborn', 'paramiko',
+        'matplotlib', 'kubernetes', 'ibm-cos-sdk', 'redis'
+    ],
     include_package_data=True,
     entry_points='''
         [console_scripts]

@@ -28,7 +28,7 @@ Use cloud storage as a filesystem:
     print(os.listdir(dirname))
 
     def read_file(filename):
-        with open(filename) as f:
+        with open(filename, 'r') as f:
             return f.read()
 
     pool = Pool()

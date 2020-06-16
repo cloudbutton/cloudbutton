@@ -11,6 +11,7 @@ import requests
 import http.client
 from urllib.parse import urlparse
 from kubernetes import client, config, watch
+
 from cloudbutton.engine.utils import version_str
 from cloudbutton.version import __version__
 from cloudbutton.config import CACHE_DIR, load_yaml_config, dump_yaml_config
@@ -362,6 +363,7 @@ class KnativeServingBackend:
         full_docker_image_name = '/'.join([self.knative_config['docker_repo'], docker_image_name])
         svc_res['spec']['template']['spec']['containers'][0]['image'] = full_docker_image_name
         svc_res['spec']['template']['spec']['containers'][0]['resources']['limits']['memory'] = '{}Mi'.format(runtime_memory)
+        svc_res['spec']['template']['spec']['containers'][0]['resources']['limits']['cpu'] = '{}m'.format(self.knative_config['cpu'])
 
         try:
             # delete the service resource if exists

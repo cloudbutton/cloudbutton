@@ -1,6 +1,6 @@
 # Cloudbutton on Knative
 
-Cloudbutton also supports Knative for running applications. The easiest way to make it working is to create an IBM Kubernetes (IKS) cluster through the [IBM dashboard](https://cloud.ibm.com/kubernetes/landing). Alternatively you can use your own kubernetes cluster or a minikube installation.
+Cloudbutton toolkit with *Knative* as compute backend. Cloudbutton also supports vanilla Knative for running applications. The easiest way to make it working is to create an IBM Kubernetes (IKS) cluster through the [IBM dashboard](https://cloud.ibm.com/kubernetes/landing). Alternatively you can use your own kubernetes cluster or a minikube installation.
 
 ### Installation
 
@@ -73,7 +73,7 @@ Cloudbutton also supports Knative for running applications. The easiest way to m
    Run the next command:
    
    ```bash
-   $ pywren-ibm-cloud test
+   $ cloudbutton test
    ```
    
    or run the next Python code:

@@ -3,9 +3,9 @@ import logging
 from cloudbutton.config import CACHE_DIR, STORAGE_FOLDER, \
     default_config, extract_storage_config, extract_compute_config, \
     RUNTIMES_PREFIX, JOBS_PREFIX, DOCKER_FOLDER
-from cloudbutton.engine.backends.storage import InternalStorage
-from cloudbutton.engine.backends.storage.utils import clean_bucket
-from cloudbutton.engine.backends.compute import Compute
+from cloudbutton.engine.storage import InternalStorage
+from cloudbutton.engine.storage.utils import clean_bucket
+from cloudbutton.engine.compute import Compute
 
 
 logger = logging.getLogger(__name__)

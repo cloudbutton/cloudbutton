@@ -1,5 +1,6 @@
 # Cloudbutton on IBM Coligo (Experimental)
 
+Cloudbutton toolkit with *IBM Coligo* as compute backend.
 
 **Notice that IBM Coligo is still in beta. Use this only for testing**
 
@@ -84,7 +85,7 @@ IBM Coligo is based on Knative, so the only requirement to make it working is to
    Run the next command:
    
    ```bash
-   $ pywren-ibm-cloud test
+   $ cloudbutton test
    ```
    
    or run the next Python code:

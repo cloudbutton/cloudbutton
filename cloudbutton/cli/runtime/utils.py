@@ -1,6 +1,6 @@
 import logging
-from cloudbutton.engine.backends.storage import InternalStorage
-from cloudbutton.engine.backends.compute import Compute
+from cloudbutton.engine.storage import InternalStorage
+from cloudbutton.engine.compute import Compute
 from cloudbutton.config import default_config, extract_storage_config, extract_compute_config
 
 

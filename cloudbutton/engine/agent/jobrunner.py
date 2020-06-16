@@ -11,7 +11,7 @@ import traceback
 import numpy as np
 from distutils.util import strtobool
 
-from cloudbutton.engine.backends.storage import Storage
+from cloudbutton.engine.storage import Storage
 from cloudbutton.engine.wait import wait_storage
 from cloudbutton.engine.future import ResponseFuture
 from cloudbutton.engine.libs.tblib import pickling_support

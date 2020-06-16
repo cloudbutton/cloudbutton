@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from multiprocessing import Process, Queue, Value
 from concurrent.futures import ThreadPoolExecutor
 
-from cloudbutton.engine.backends.compute import Compute
+from cloudbutton.engine.compute import Compute
 from cloudbutton.engine.future import ResponseFuture
 from cloudbutton.engine.utils import version_str, is_cloudbutton_function, is_unix_system
 from cloudbutton.version import __version__

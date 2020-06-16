@@ -13,11 +13,11 @@ from distutils.util import strtobool
 from cloudbutton import version
 from cloudbutton.engine.utils import sizeof_fmt
 from cloudbutton.config import extract_storage_config
-from cloudbutton.engine.backends.storage import InternalStorage
+from cloudbutton.engine.storage import InternalStorage
 from cloudbutton.engine.agent.jobrunner import JobRunner
 from cloudbutton.engine.agent.utils import get_memory_usage
 from cloudbutton.config import cloud_logging_config, JOBS_PREFIX, STORAGE_FOLDER
-from cloudbutton.engine.backends.storage.utils import create_output_key, create_status_key, create_init_key
+from cloudbutton.engine.storage.utils import create_output_key, create_status_key, create_init_key
 
 
 logging.getLogger('pika').setLevel(logging.CRITICAL)

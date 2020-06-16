@@ -7,7 +7,7 @@ from cloudbutton.engine.utils import version_str
 from cloudbutton.version import __version__
 from cloudbutton.engine.utils import is_cloudbutton_function
 from cloudbutton.engine.libs.openwhisk.client import OpenWhiskClient
-from cloudbutton.engine.backends.compute.utils import create_function_handler_zip
+from cloudbutton.engine.compute.utils import create_function_handler_zip
 
 logger = logging.getLogger(__name__)
 

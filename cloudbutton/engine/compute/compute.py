@@ -18,7 +18,7 @@ class Compute:
         self.compute_handler = None
 
         try:
-            module_location = 'cloudbutton.engine.backends.compute.{}'.format(self.backend)
+            module_location = 'cloudbutton.engine.compute.backends.{}'.format(self.backend)
             cb_module = importlib.import_module(module_location)
             ComputeBackend = getattr(cb_module, 'ComputeBackend')
             self.compute_handler = ComputeBackend(self.config[self.backend])

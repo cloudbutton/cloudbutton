@@ -1,4 +1,6 @@
-# Cloudbutton on GCP Functions
+# Cloudbutton on GCP Storage
+
+Cloudbutton toolkit with GCP Storage as storage backend.
 
 ### Installation
 

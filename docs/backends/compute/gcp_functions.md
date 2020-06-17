@@ -1,5 +1,7 @@
 # Cloudbutton on GCP Functions
 
+Cloudbutton toolkit with GCP Functions as storage backend.
+
 ### Installation
 
  1. [Login](https://console.cloud.google.com) to Google Cloud Console (or signup if you don't have an account).

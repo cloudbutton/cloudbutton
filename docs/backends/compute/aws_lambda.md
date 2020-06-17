@@ -1,5 +1,7 @@
 # Cloudbutton on AWS Lambda
 
+Cloudbutton toolkit with AWS Lambda as compute backend.
+
 ### Installation
 
 1. [Login](https://console.aws.amazon.com/?nc2=h_m_mc) to Amazon Web Services Console (or signup if you don't have an account)

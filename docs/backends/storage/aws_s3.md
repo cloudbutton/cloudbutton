@@ -1,8 +1,6 @@
-# Cloudbutton on IBM Cloud Object Storage
+# Cloudbutton on AWS S3
 
-
-Cloudbutton toolkit with IBM COS as storage backend.
-
+Cloudbutton toolkit with AWS S3 as storage backend.
 
 ### Installation
 

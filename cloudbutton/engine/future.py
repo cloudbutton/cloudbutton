@@ -6,8 +6,8 @@ import logging
 import traceback
 from six import reraise
 
-from cloudbutton.engine.backends.storage import InternalStorage
-from cloudbutton.engine.backends.storage.utils import check_storage_path, get_storage_path
+from cloudbutton.engine.storage import InternalStorage
+from cloudbutton.engine.storage.utils import check_storage_path, get_storage_path
 from cloudbutton.engine.libs.tblib import pickling_support
 
 pickling_support.install()

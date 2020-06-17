@@ -10,7 +10,7 @@ from cloudbutton.engine import utils
 from cloudbutton.config import MAX_AGG_DATA_SIZE, JOBS_PREFIX
 from cloudbutton.engine.job.partitioner import create_partitions
 from cloudbutton.engine.job.serialize import SerializeIndependent, create_module_data
-from cloudbutton.engine.backends.storage.utils import create_func_key, create_agg_data_key
+from cloudbutton.engine.storage.utils import create_func_key, create_agg_data_key
 
 
 logger = logging.getLogger(__name__)
@@ -224,8 +224,8 @@ def clean_job(jobs_to_clean, storage_config, clean_cloudobjects):
         jobs_path = temp.name
 
     script = """
-    from cloudbutton.engine.backends.storage import InternalStorage
-    from cloudbutton.engine.backends.storage.utils import clean_bucket
+    from cloudbutton.engine.storage import InternalStorage
+    from cloudbutton.engine.storage.utils import clean_bucket
     from cloudbutton.config import JOBS_PREFIX, TEMP_PREFIX
     import pickle
     import os

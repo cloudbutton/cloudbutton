@@ -5,8 +5,8 @@ import logging
 from functools import partial
 
 from cloudbutton.engine.invoker import FunctionInvoker
-from cloudbutton.engine.backends.storage import InternalStorage
-from cloudbutton.engine.backends.storage.utils import delete_cloudobject
+from cloudbutton.engine.storage import InternalStorage
+from cloudbutton.engine.storage.utils import delete_cloudobject
 from cloudbutton.engine.wait import wait_storage, wait_rabbitmq, ALL_COMPLETED
 from cloudbutton.engine.job import create_map_job, create_reduce_job, clean_job
 from cloudbutton.engine.utils import timeout_handler, is_notebook, is_unix_system, \

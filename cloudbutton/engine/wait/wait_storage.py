@@ -7,7 +7,7 @@ import logging
 from threading import Thread
 from multiprocessing.pool import ThreadPool
 
-from cloudbutton.engine.backends.storage.utils import create_status_key
+from cloudbutton.engine.storage.utils import create_status_key
 from cloudbutton.config import JOBS_PREFIX
 
 

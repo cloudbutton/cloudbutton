@@ -5,7 +5,7 @@ import importlib
 from cloudbutton.version import __version__
 from cloudbutton.config import CACHE_DIR, RUNTIMES_PREFIX, JOBS_PREFIX, TEMP_PREFIX
 from cloudbutton.engine.utils import is_cloudbutton_function, uuid_str
-from cloudbutton.engine.backends.storage.utils import create_status_key, create_output_key, \
+from cloudbutton.engine.storage.utils import create_status_key, create_output_key, \
     status_key_suffix, init_key_suffix, CloudObject, StorageNoSuchKeyError
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class Storage:
         self.backend = storage_backend
 
         try:
-            module_location = 'cloudbutton.engine.backends.storage.{}'.format(self.backend)
+            module_location = 'cloudbutton.engine.storage.backends.{}'.format(self.backend)
             sb_module = importlib.import_module(module_location)
             storage_config = self.pywren_config[self.backend]
             storage_config['user_agent'] = 'cloudbutton/{}'.format(__version__)
@@ -139,7 +139,7 @@ class InternalStorage:
         self.executor_id = executor_id
 
         try:
-            module_location = 'cloudbutton.engine.backends.storage.{}'.format(self.backend)
+            module_location = 'cloudbutton.engine.storage.backends.{}'.format(self.backend)
             sb_module = importlib.import_module(module_location)
             StorageBackend = getattr(sb_module, 'StorageBackend')
             self.storage_handler = StorageBackend(self.config[self.backend],

@@ -11,7 +11,7 @@ from cloudbutton.version import __version__
 from cloudbutton.engine.utils import is_cloudbutton_function
 from cloudbutton.config import CACHE_DIR, load_yaml_config, dump_yaml_config
 from cloudbutton.engine.libs.openwhisk.client import OpenWhiskClient
-from cloudbutton.engine.backends.compute.utils import create_function_handler_zip
+from cloudbutton.engine.compute.utils import create_function_handler_zip
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ class IBMCloudFunctionsBackend:
         logger.info("Set IBM CF Endpoint to {}".format(self.endpoint))
 
         self.user_key = self.api_key[:5] if self.api_key else self.iam_api_key[:5]
-        self.package = 'pywren_v{}_{}'.format(__version__, self.user_key)
+        self.package = 'cloudbutton_v{}_{}'.format(__version__, self.user_key)
 
         if self.api_key:
             enc_api_key = str.encode(self.api_key)
@@ -174,8 +174,8 @@ class IBMCloudFunctionsBackend:
         """
         packages = self.cf_client.list_packages()
         for pkg in packages:
-            if (pkg['name'].startswith('pywren') and pkg['name'].endswith(self.user_key)) or \
-               (pkg['name'].startswith('pywren') and pkg['name'].count('_') == 1):
+            if (pkg['name'].startswith('cloudbutton') and pkg['name'].endswith(self.user_key)) or \
+               (pkg['name'].startswith('cloudbutton') and pkg['name'].count('_') == 1):
                 actions = self.cf_client.list_actions(pkg['name'])
                 while actions:
                     for action in actions:

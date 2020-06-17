@@ -1,6 +1,4 @@
 #
-# (C) Copyright IBM Corp. 2018
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -18,7 +16,7 @@ import logging
 import boto3
 import botocore
 from datetime import datetime
-from ..utils import StorageNoSuchKeyError
+from ...utils import StorageNoSuchKeyError
 
 logging.getLogger('boto3').setLevel(logging.CRITICAL)
 logging.getLogger('botocore').setLevel(logging.CRITICAL)

@@ -35,7 +35,7 @@
 
 ### Verify
 
-8. Test if Cloudbutton toolkit on Lambda is working properly:
+7. Test if Cloudbutton toolkit on Lambda is working properly:
 
    Run the next command:
    

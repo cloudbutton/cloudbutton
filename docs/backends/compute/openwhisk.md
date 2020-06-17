@@ -34,7 +34,7 @@ Cloudbutton toolkit with *OpenWhisk* as compute backend. Cloudbutton can also ru
 
 ### Configuration
 
-3. Edit your pywren config file and add the following keys:
+3. Edit your cloudbutton config file and add the following keys:
    ```yaml
     openwhisk:
         endpoint    : <OW_ENDPOINT>
@@ -52,7 +52,7 @@ Cloudbutton toolkit with *OpenWhisk* as compute backend. Cloudbutton can also ru
         NAMESPACE=guest
         ```
         
-        Copy all the values into the pywren config file as:
+        Copy all the values into the cloudbutton config file as:
         
         ```yaml
         cloudbutton:

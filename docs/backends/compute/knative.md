@@ -36,9 +36,9 @@ Cloudbutton toolkit with *Knative* as compute backend. Cloudbutton also supports
    export KUBECONFIG=<path-to-kube-config-file>
    ```
 
-5. Edit your pywren config file and add the following keys:
+5. Edit your cloudbutton config file and add the following keys:
     ```yaml
-    pywren:
+    cloudbutton:
         compute_backend: knative
         
     knative:

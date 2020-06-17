@@ -16,7 +16,7 @@ Cloudbutton toolkit with AWS Lambda as compute backend.
 
 ### Configuration
 
-6. Edit your pywren config file and add the following keys:
+6. Edit your cloudbutton config file and add the following keys:
 
 ```yaml
     cloudbutton:

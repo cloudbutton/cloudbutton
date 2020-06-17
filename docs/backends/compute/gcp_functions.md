@@ -22,7 +22,7 @@ Cloudbutton toolkit with GCP Functions as storage backend.
 
 ### Configuration
 
-8. Edit your pywren config file and add the following keys:
+8. Edit your cloudbutton config file and add the following keys:
 
 ```yaml
     cloudbutton:

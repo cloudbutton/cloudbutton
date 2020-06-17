@@ -12,10 +12,10 @@ Cloudbutton toolkit with *Docker* as compute backend. Cloudbutton can run functi
 
 #### Option 1 (Localhost):
 
-3. Edit your pywren config file and add the following keys:
+3. Edit your cloudbutton config file and add the following keys:
 
    ```yaml
-   pywren:
+   cloudbutton:
        compute_backend: docker
 
    docker:
@@ -25,10 +25,10 @@ Cloudbutton toolkit with *Docker* as compute backend. Cloudbutton can run functi
 
 #### Option 2 (Remote host):
 
-3. Edit your pywren config file and add the following keys:
+3. Edit your cloudbutton config file and add the following keys:
 
    ```yaml
-   pywren:
+   cloudbutton:
        compute_backend: docker
 
    docker:

@@ -9,7 +9,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 from cloudbutton.engine.executor import FunctionExecutor
-from cloudbutton.engine.backends.storage import InternalStorage
+from cloudbutton.engine.storage import InternalStorage
 from cloudbutton.config import default_config, extract_storage_config
 
 

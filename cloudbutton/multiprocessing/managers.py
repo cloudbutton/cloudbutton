@@ -48,6 +48,19 @@ class Token(object):
         return '%s(typeid=%r, address=%r, id=%r)' % \
                (self.__class__.__name__, self.typeid, self.address, self.id)
 
+    @classmethod
+    def create(cls, proxy_obj):
+        typeid = proxy_obj._typeid
+
+        host = proxy_obj._client.kwargs.pop('host', 'localhost')
+        port = str(proxy_obj._client.kwargs.pop('port', 6379))
+        address = host + ':' + port
+
+        id = proxy_obj._oid
+        return cls(typeid, address, id)
+
+
+
 #
 # Helper functions
 #
@@ -81,7 +94,8 @@ class BaseManager:
 
     def __init__(self, address=None, authkey=None, serializer='pickle',
                  ctx=None):
-        pass
+        self._client = util.get_redis_client()
+        self._objects = []
 
     def get_server(self):
         pass
@@ -111,10 +125,15 @@ class BaseManager:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._clean_up()
+        self.close()
 
-    def _clean_up(self):
-        pass
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        if self._objects:
+            self._client.delete(*self._objects)
+            self._objects = []
 
     @classmethod
     def register(cls, typeid, proxytype=None, callable=None, exposed=None,
@@ -125,6 +144,7 @@ class BaseManager:
         def temp(self, *args, **kwds):
             util.debug('requesting creation of a shared %r object', typeid)
             proxy = proxytype(*args, **kwds)
+            self._objects.append(proxy._oid)
             return proxy
         temp.__name__ = typeid
         setattr(cls, typeid, temp)
@@ -148,7 +168,7 @@ class BaseProxy(object):
 
         self._pickler = pickler if serializer is None else serializer
         self._client = util.get_redis_client()
-        self._incref()
+        #self._incref()
 
     def __getstate__(self):
         return (self._typeid, self._oid, self._rck,
@@ -157,7 +177,7 @@ class BaseProxy(object):
     def __setstate__(self, state):
         (self._typeid, self._oid, self._rck,
         self._pickler, self._client) = state
-        self._incref()
+        #self._incref()
 
     def _getvalue(self):
         '''
@@ -165,23 +185,25 @@ class BaseProxy(object):
         '''
         pass
 
-    def _incref(self):
-        return int(self._client.incr(self._rck, 1))
+    # def _incref(self):
+    #     return int(self._client.incr(self._rck, 1))
 
-    def _decref(self):
-        return int(self._client.decr(self._rck, 1))
+    # def _decref(self):
+    #     return int(self._client.decr(self._rck, 1))
 
-    def _refcount(self):
-        return int(self._client.get(self._rck))
+    # def _refcount(self):
+    #     return int(self._client.get(self._rck))
 
-    def __del__(self):
-        refcount = self._decref()
-        if refcount <= 0:
-            self._client.delete(self._oid, self._rck)
+    # def __del__(self):
+    #     refcount = self._decref()
+    #     if refcount <= 0:
+    #         self._client.delete(self._oid, self._rck)
 
     def __repr__(self):
-        return '<%s object, typeid=%r, key=%r, refcount=%r>' % \
-               (type(self).__name__, self._typeid, self._oid, self._refcount())
+        return '<%s object, typeid=%r, key=%r>' % \
+               (type(self).__name__, self._typeid, self._oid)
+        # return '<%s object, typeid=%r, key=%r, refcount=%r>' % \
+        #        (type(self).__name__, self._typeid, self._oid, self._refcount())
 
     def __str__(self):
         '''
@@ -194,7 +216,7 @@ class BaseProxy(object):
 # Types/callables which we will register with SyncManager
 #
 
-# FIXME: list slices should return an instance of a ListProxy
+# NOTE: list slices should return an instance of a ListProxy
 #        or a native python list?
 #        
 #          A = ListProxy([1, 2, 3])
@@ -208,7 +230,7 @@ class BaseProxy(object):
 #        
 #          A = A[2:]
 #        
-#        with A being a python list after executing.
+#        with A being a python list after executing that line.
 #        
 #        Current implementation is the same as multiprocessing
 

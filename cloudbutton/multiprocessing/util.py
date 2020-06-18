@@ -440,8 +440,9 @@ class PicklableRedis(redis.StrictRedis):
 
 from cloudbutton.config import default_config
 
-def get_redis_client():
+def get_redis_client(**overwrites):
     conn_params = default_config()['redis']
+    conn_params.update(overwrites)
     return PicklableRedis(**conn_params)
 
 

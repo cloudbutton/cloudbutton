@@ -1,7 +1,7 @@
 import io
 import os as base_os
 from functools import partial
-from .engine.backends.storage import InternalStorage
+from .engine.storage import InternalStorage
 from .engine.utils import is_cloudbutton_function
 from .config import (default_config,
                     load_yaml_config, 
@@ -34,11 +34,13 @@ class CloudStorage(InternalStorage):
 class CloudFileProxy:
     def __init__(self, cloud_storage=None):
         self._storage = cloud_storage or CloudStorage()
+        self.path = _path(self._storage)
 
     def __getattr__(self, name):
+        # we only reach here if the attr is not defined
         return getattr(base_os, name)
 
-    def listdir(self, path=''):
+    def listdir(self, path='', suffix_dirs=False):
         if path == '':
             prefix = path
         else:
@@ -49,13 +51,70 @@ class CloudFileProxy:
         for p in paths:
             p = p[len(prefix):] if p.startswith(prefix) else p
             splits = p.split('/')
-            name = splits[0] + '/' if len(splits) > 1 else splits[0]
+            name = splits[0] + '/' if suffix_dirs and len(splits) > 1 else splits[0]
             names |= set([name])
         return list(names)
+
+    def walk(self, top, topdown=True, onerror=None, followlinks=False):
+        dirs = []
+        files = []
+
+        for path in self.listdir(top, suffix_dirs=True):
+            if path.endswith('/'):
+                dirs.append(path[:-1])
+            else:
+                files.append(path)
+
+        if dirs == [] and files == [] and not self.path.exists(top):
+            raise StopIteration
+
+        elif topdown:
+            yield (top, dirs, files)
+            for dir in dirs:
+                for result in self.walk('/'.join([top, dir]), topdown, onerror, followlinks):
+                    yield result
+        
+        else:
+            for dir in dirs:
+                for result in self.walk('/'.join([top, dir]), topdown, onerror, followlinks):
+                    yield result
+            yield (top, dirs, files)
 
     def remove(self, key):
         self._storage.delete_cobject(key=key)
 
+    def mkdir(self, *args, **kwargs):
+        pass
+
+    def makedirs(self, *args, **kwargs):
+        pass
+
+
+class _path:
+    def __init__(self, cloud_storage=None):
+        self._storage = cloud_storage or CloudStorage()
+
+    def __getattr__(self, name):
+        # we only reach here if the attr is not defined
+        return getattr(base_os.path, name)
+
+    def isfile(self, path):
+        return path in self._storage.list_keys(prefix=path)
+
+    def isdir(self, path):
+        path = path if path.endswith('/') else path + '/'
+        for key in self._storage.list_keys(prefix=path):
+            if key.startswith(path):
+                return True
+        return False
+
+    def exists(self, path):
+        dirpath = path if path.endswith('/') else path + '/'
+        for key in self._storage.list_keys(prefix=path):
+            if key.startswith(dirpath) or key == path:
+                return True
+        return False
+        
 
 class DelayedBytesBuffer(io.BytesIO):
     def __init__(self, action, initial_bytes=None):

@@ -103,8 +103,9 @@ def get_subhandle(handle):
 
     elif handle.startswith(REDIS_PUBSUB_CONN_B):
         return REDIS_PUBSUB_CONN_A + handle[len(REDIS_PUBSUB_CONN_B):]
-    raise ValueError("bad handle prefix '{}' - see cloudbutton.connection"
-        " handle prefixes".format(handle))
+
+    raise ValueError("bad handle prefix '{}' - see "
+        "cloudbutton.multiprocessing.connection handle prefixes".format(handle))
 
 def _validate_address(address):
     if not isinstance(address, str):

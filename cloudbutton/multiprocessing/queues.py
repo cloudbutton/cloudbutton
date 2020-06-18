@@ -22,8 +22,9 @@ from queue import Empty, Full
 import _multiprocessing
 
 from . import connection
-from . import context
+from . import util
 from . import synchronize
+from . import context
 _ForkingPickler = context.reduction.ForkingPickler
 
 from .util import debug, info, Finalize, register_after_fork, is_exiting
@@ -132,7 +133,7 @@ class Queue:
         # Start thread which transfers data from buffer to pipe
         self._buffer.clear()
         self._thread = threading.Thread(
-            target=Queue._feed,
+            target=type(self)._feed,
             args=(self._buffer, self._notempty, self._send_bytes,
                   self._writer.close, self._ignore_epipe),
             name='QueueFeederThread'
@@ -145,14 +146,14 @@ class Queue:
 
         if not self._joincancelled:
             self._jointhread = Finalize(
-                self._thread, Queue._finalize_join,
+                self._thread, type(self)._finalize_join,
                 [weakref.ref(self._thread)],
                 exitpriority=-5
                 )
 
         # Send sentinel to the thread queue object when garbage collected
         self._close = Finalize(
-            self, Queue._finalize_close,
+            self, type(self)._finalize_close,
             [self._buffer, self._notempty],
             exitpriority=10
             )
@@ -230,6 +231,9 @@ class SimpleQueue:
     def __init__(self):
         self._reader, self._writer = connection.Pipe(duplex=False)
         self._closed = False
+        self._ref = util.Reference(self._reader._handle,
+            collectables=[self._reader._handle, self._reader._subhandle],
+            client=self._reader._client)
 
     def _poll(self, timeout=0.0):
         return self._reader.poll(0.0)

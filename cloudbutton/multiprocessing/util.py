@@ -504,9 +504,19 @@ class Reference:
 
     def __del__(self):
         if not self.managed:
-            refcount = self.decref()
-            if refcount < 0:
-                self.collect()
+            try:
+                refcount = self.decref()
+                if refcount < 0:
+                    self.collect()
+            except ImportError:
+                # FIXME: can't use the client while python is closing
+                # only happens when the "last" scope gets garbage collected
+                # and it contains an object with a reference
+                # Temp solution 1: delete the object explicitly
+                #   del mylist
+                #   del myqueue
+                # Temp solution 2: always define main inside a function
+                pass
 
     def collect(self):
         self._client.delete(*self._collectables)

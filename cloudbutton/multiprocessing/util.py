@@ -463,3 +463,51 @@ def get_uuid(length=12):
 def make_stateless_script(script):
     script.registered_client = None
     return script
+
+
+#
+# Reference object for counting remote references
+#  and garbage collect redis keys automatically
+#
+
+class Reference:
+    def __init__(self, object_id, collectables=[], managed=False, client=None):
+        self._client = client or get_redis_client()
+        # reference counter key
+        self._rck = '{}-{}'.format('ref', object_id)
+        self._collectables = [self._rck]
+        if isinstance(collectables, str):
+            collectables = [collectables]
+        self._collectables.extend(collectables)
+        self.managed = managed
+
+    def __getstate__(self):
+        return (self._client, self._rck, 
+            self._collectables, self.managed)
+
+    def __setstate__(self, state):
+        (self._client, self._rck, 
+            self._collectables, self.managed) = state
+        self.incref()
+
+    def incref(self):
+        if not self.managed:
+            return int(self._client.incr(self._rck, 1))
+
+    def decref(self):
+        if not self.managed:
+            return int(self._client.decr(self._rck, 1))
+
+    def refcount(self):
+        count = self._client.get(self._rck)
+        return 1 if count is None else count + 1
+
+    def __del__(self):
+        if not self.managed:
+            refcount = self.decref()
+            if refcount < 0:
+                self.collect()
+
+    def collect(self):
+        self._client.delete(*self._collectables)
+        self._collectables = []

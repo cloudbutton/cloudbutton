@@ -13,12 +13,8 @@ __all__ = [
     ]
 
 import threading
-import sys
 import time
-import uuid
 
-from . import context
-from . import process
 from . import util
 
 #
@@ -48,13 +44,15 @@ class SemLock:
     """
 
     def __init__(self, value=1, max_value=1):
-        self._name = 'semlock-' + uuid.uuid1().hex
+        self._name = 'semlock-' + util.get_uuid()
         self._max_value = max_value
         self._client = util.get_redis_client()
         self._client.rpush(self._name, *([''] * value))
 
         self._lua_release = self._client.register_script(Semaphore.LUA_RELEASE_SCRIPT)
         util.make_stateless_script(self._lua_release)
+
+        self._ref = util.Reference(self._name, self._name, client=self._client)
 
     def __getstate__(self):
         return (self._name, self._max_value, 
@@ -161,7 +159,9 @@ class Condition:
             # help reducing the amount of open clients
             self._client = self._lock._client
         
-        self._notify_handle = 'condition-notify-' + uuid.uuid1().hex
+        self._notify_handle = 'condition-notify-' + util.get_uuid()
+        self._ref = util.Reference(self._notify_handle, self._notify_handle,
+            client=self._client)
 
 
     def acquire(self):
@@ -180,7 +180,7 @@ class Condition:
         assert self._lock.owned
 
         # Enqueue the key we will be waiting for until we are notified
-        self._wait_handle = 'condition-wait-' + uuid.uuid1().hex
+        self._wait_handle = 'condition-wait-' + util.get_uuid()
         res = self._client.rpush(self._notify_handle, self._wait_handle)
 
         if not res:
@@ -252,8 +252,9 @@ class Event:
     def __init__(self):
         self._cond = Condition()
         self._client = self._cond._client
-        self._flag_handle = uuid.uuid1().hex
-
+        self._flag_handle = 'event-flag-' + util.get_uuid()
+        self._ref = util.Reference(self._flag_handle, self._flag_handle,
+            client=self._client)
 
     def is_set(self):
         return self._client.get(self._flag_handle) == b'1'
@@ -280,8 +281,12 @@ class Barrier(threading.Barrier):
     def __init__(self, parties, action=None, timeout=None):
         self._cond = Condition()
         self._client = self._cond._client
-        self._state_handle = uuid.uuid1().hex
-        self._count_handle = uuid.uuid1().hex
+        uuid = util.get_uuid()
+        self._state_handle = 'barrier-state-' + uuid
+        self._count_handle = 'barrier-count-' + uuid
+        self._ref = util.Reference(self._state_handle, 
+            collectables=[self._state_handle, self._count_handle],
+            client=self._client)
         self._action = action
         self._timeout = timeout
         self._parties = parties

@@ -14,16 +14,35 @@ __all__ = [ 'BaseManager', 'SyncManager', 'BaseProxy', 'Token' ]
 # Imports
 #
 
-from . import connection
 from . import pool
-from . import process
-from . import util
 from . import synchronize
-from . import context
 from . import queues
+from . import util
 import pickle as pickler
 import redis
 from copy import deepcopy
+
+
+#
+# Helper functions
+#
+
+def deslice(slic: slice):
+    start = slic.start
+    end = slic.stop
+    step = slic.step
+
+    if start is None:
+        start = 0
+    if end is None:
+        end = -1
+    elif start == end or end == 0:
+        return None, None, None
+    else:
+        end -= 1
+
+    return start, end, step
+
 
 #
 # Type for identifying shared objects
@@ -60,28 +79,6 @@ class Token(object):
         return cls(typeid, address, id)
 
 
-
-#
-# Helper functions
-#
-
-def deslice(slic: slice):
-    start = slic.start
-    end = slic.stop
-    step = slic.step
-
-    if start is None:
-        start = 0
-    if end is None:
-        end = -1
-    elif start == end or end == 0:
-        return None, None, None
-    else:
-        end -= 1
-
-    return start, end, step
-
-
 #
 # Definition of BaseManager
 #
@@ -95,7 +92,8 @@ class BaseManager:
     def __init__(self, address=None, authkey=None, serializer='pickle',
                  ctx=None):
         self._client = util.get_redis_client()
-        self._objects = []
+        self._managing = False
+        self._mrefs = []
 
     def get_server(self):
         pass
@@ -122,29 +120,34 @@ class BaseManager:
         pass
 
     def __enter__(self):
+        self._managing = True
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
+        self.shutdown()
+        self._managing = False
 
-    def __del__(self):
-        self.close()
+    # def __del__(self):
+    #     self.shutdown()
 
-    def close(self):
-        if self._objects:
-            self._client.delete(*self._objects)
-            self._objects = []
+    def shutdown(self):
+        if self._managing:
+            for ref in self._mrefs:
+                ref.collect()
+            self._mrefs = []
 
     @classmethod
     def register(cls, typeid, proxytype=None, callable=None, exposed=None,
-                 method_to_typeid=None, create_method=True):
+                 method_to_typeid=None, create_method=True, can_manage=True):
         '''
         Register a typeid with the manager type
         '''
         def temp(self, *args, **kwds):
             util.debug('requesting creation of a shared %r object', typeid)
             proxy = proxytype(*args, **kwds)
-            self._objects.append(proxy._oid)
+            if self._managing and can_manage:
+                proxy._ref.managed = True
+                self._mrefs.append(proxy._ref)
             return proxy
         temp.__name__ = typeid
         setattr(cls, typeid, temp)
@@ -163,41 +166,17 @@ class BaseProxy(object):
         self._typeid = typeid
         # object id
         self._oid = '{}-{}'.format(typeid, util.get_uuid())
-        # reference counter key
-        self._rck = '{}-{}'.format('ref', self._oid)
 
         self._pickler = pickler if serializer is None else serializer
         self._client = util.get_redis_client()
-        #self._incref()
-
-    def __getstate__(self):
-        return (self._typeid, self._oid, self._rck,
-         self._pickler, self._client)
-
-    def __setstate__(self, state):
-        (self._typeid, self._oid, self._rck,
-        self._pickler, self._client) = state
-        #self._incref()
+        self._ref = util.Reference(self._oid, self._oid,
+            client=self._client)
 
     def _getvalue(self):
         '''
         Get a copy of the value of the referent
         '''
         pass
-
-    # def _incref(self):
-    #     return int(self._client.incr(self._rck, 1))
-
-    # def _decref(self):
-    #     return int(self._client.decr(self._rck, 1))
-
-    # def _refcount(self):
-    #     return int(self._client.get(self._rck))
-
-    # def __del__(self):
-    #     refcount = self._decref()
-    #     if refcount <= 0:
-    #         self._client.delete(self._oid, self._rck)
 
     def __repr__(self):
         return '<%s object, typeid=%r, key=%r>' % \
@@ -258,13 +237,6 @@ class ListProxy(BaseProxy):
 
         if iterable is not None:
             self.extend(iterable)
-
-    def __getstate__(self):
-        return super().__getstate__() + (self._lua_extend_list,)
-
-    def __setstate__(self, state):
-        super().__setstate__(state[:-1])
-        self._lua_extend_list = state[-1]
 
     def __setitem__(self, i, obj):
         if isinstance(i, int) or hasattr(i, '__index__'):
@@ -621,6 +593,7 @@ class SyncManager(BaseManager):
     this class.
     '''
 
+
 SyncManager.register('Queue', queues.Queue)
 SyncManager.register('JoinableQueue', queues.JoinableQueue)
 SyncManager.register('SimpleQueue', queues.SimpleQueue)
@@ -631,7 +604,7 @@ SyncManager.register('Semaphore', synchronize.Semaphore)
 SyncManager.register('BoundedSemaphore', synchronize.BoundedSemaphore)
 SyncManager.register('Condition', synchronize.Condition)
 SyncManager.register('Barrier', synchronize.Barrier)
-SyncManager.register('Pool', pool.Pool)
+SyncManager.register('Pool', pool.Pool, can_manage=False)
 SyncManager.register('list', ListProxy)
 SyncManager.register('dict', DictProxy)
 SyncManager.register('Value', ValueProxy)

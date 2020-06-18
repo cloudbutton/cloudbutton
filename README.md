@@ -1,11 +1,12 @@
 # Cloudbutton Toolkit
 
 **The Cloudbutton Toolkit is a Python multicloud library for running serverless jobs**   
-It currently supports AWS Lambda, IBM Cloud Functions, Google Cloud Functions, Azure Functions, Aliyun Function Compute, and Knative.
+It currently supports AWS, IBM Cloud, Google Cloud, Microsoft Azure, Alibaba Aliyun, and more. See [plugins](https://github.com/cloudbutton/cloudbutton/tree/master/docs/backends).
 
 ### Quick start
 Run functions in the cloud using the [multiprocessing](https://docs.python.org/3.6/library/multiprocessing.html) API:
 
+   ```python
     from cloudbutton.multiprocessing import Pool
     
     def incr(x):
@@ -14,9 +15,11 @@ Run functions in the cloud using the [multiprocessing](https://docs.python.org/3
     pool = Pool()
     res = pool.map(incr, range(10))
     print(res)
+   ```
 
 Use cloud storage as a filesystem:  
 
+   ```python
     from cloudbutton.multiprocessing import Pool
     from cloudbutton.cloud_proxy import os, open
 
@@ -37,9 +40,11 @@ Use cloud storage as a filesystem:
 
     os.remove(filename)
     print(os.listdir(dirname))
+   ```
 
 Use remote in-memory cache for fast IPC and synchronization  
 
+   ```python
     from cloudbutton.multiprocessing import Pool, Manager, Lock
     from random import choice
 
@@ -60,21 +65,15 @@ Use remote in-memory cache for fast IPC and synchronization
     record['total'] = 0
     pool.map(count_chars, [(char, text, record, lock) for char in alphabet])
     print(record.todict())
+   ```
 
 ## Documentation
 - [Website](https://cloudbutton.github.io)
-- [API Examples](/examples)
+- [API Examples](https://github.com/cloudbutton/cloudbutton/tree/master/examples)
 - [Toolkit Examples](https://github.com/cloudbutton/examples)
 
-## Plugins
-- [AWS Lambda](https://github.com/cloudbutton/aws-plugin)
-- [Google Cloud Functions](https://github.com/cloudbutton/gcp-plugin)
-- [Microsoft Azure Functions](https://github.com/cloudbutton/azure-plugin)
-- [Aliyun Function Compute](https://github.com/cloudbutton/aliyun-plugin)
-- [Apache Airflow](https://github.com/cloudbutton/airflow-plugin)
-- [Knative](https://github.com/cloudbutton/cloudbutton/blob/master/docs/backends/compute/knative.md)
-- [OpenWhisk](https://github.com/cloudbutton/cloudbutton/blob/master/docs/backends/compute/openwhisk.md)
+## [Plugins](https://github.com/cloudbutton/cloudbutton/tree/master/docs/backends)
 
 ## Use cases
-- [Serverless benchmarks](https://github.com/cloudbutton/benchmarks)
-- [Moments in Time video prediction](https://github.com/cloudbutton/examples/blob/master/momentsintime/example_mit.ipynb)
+- [Serverless benchmarks](https://cloudbutton.github.io/benchmarks)
+- [Moments in Time video prediction](https://cloudbutton.github.io/examples/example_mit)

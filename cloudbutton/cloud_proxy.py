@@ -1,7 +1,7 @@
 import io
 import os as base_os
 from functools import partial
-from .engine.backends.storage import InternalStorage
+from .engine.storage import InternalStorage
 from .engine.utils import is_cloudbutton_function
 from .config import (default_config,
                     load_yaml_config, 

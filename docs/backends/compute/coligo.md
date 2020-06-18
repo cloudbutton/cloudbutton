@@ -52,10 +52,10 @@ IBM Coligo is based on Knative, so the only requirement to make it working is to
 
 ### Configuration
 
-6. Edit your pywren config file and add the following keys:
+6. Edit your cloudbutton config file and add the following keys:
 
    ```yaml
-   pywren:
+   cloudbutton:
        compute_backend: knative
 
    knative:

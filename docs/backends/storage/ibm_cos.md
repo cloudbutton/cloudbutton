@@ -28,9 +28,9 @@ Cloudbutton toolkit with IBM COS as storage backend.
 
 7. Click `View credentials` and copy the *apikey* value.
 
-8. Edit your pywren config file and add the following keys:
+8. Edit your cloudbutton config file and add the following keys:
     ```yaml
-    pywren:
+    cloudbutton:
         storage_backend: ibm_cos
        
     ibm_cos:
@@ -51,9 +51,9 @@ Cloudbutton toolkit with IBM COS as storage backend.
 
 8. Click `View credentials` and copy the *access_key_id* and *secret_access_key* values.
 
-9. Edit your pywren config file and add the following keys:
+9. Edit your cloudbutton config file and add the following keys:
     ```yaml
-    pywren:
+    cloudbutton:
         storage_backend: ibm_cos
        
     ibm_cos:
@@ -71,9 +71,9 @@ Cloudbutton toolkit with IBM COS as storage backend.
 
 6. Copy the generated IAM API key (You can only see the key the first time you create it, so make sure to copy it).
 
-7. Edit your pywren config file and add the following keys:
+7. Edit your cloudbutton config file and add the following keys:
     ```yaml
-    pywren:
+    cloudbutton:
         storage_backend: ibm_cos
         
     ibm:

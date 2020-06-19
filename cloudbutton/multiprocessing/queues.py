@@ -46,11 +46,11 @@ class Queue:
 
     def __getstate__(self):
         return (self._ignore_epipe,  self._reader, 
-                self._writer, self._opid)
+                self._writer, self._opid, self._ref)
 
     def __setstate__(self, state):
         (self._ignore_epipe, self._reader,
-         self._writer, self._opid) = state
+         self._writer, self._opid, self._ref) = state
         self._after_fork()
 
     def _after_fork(self):
@@ -231,8 +231,8 @@ class SimpleQueue:
     def __init__(self):
         self._reader, self._writer = connection.Pipe(duplex=False)
         self._closed = False
-        self._ref = util.Reference(self._reader._handle,
-            collectables=[self._reader._handle, self._reader._subhandle],
+        self._ref = util.RemoteReference(
+            referenced=[self._reader._handle, self._reader._subhandle],
             client=self._reader._client)
 
     def _poll(self, timeout=0.0):

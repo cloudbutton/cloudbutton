@@ -466,28 +466,56 @@ def make_stateless_script(script):
 
 
 #
-# Reference object for counting remote references
-#  and garbage collect redis keys automatically
+# object for counting remote references (redis keys)
+# and garbage collect them automatically when nothing
+# is pointing at them
 #
 
-class Reference:
-    def __init__(self, object_id, collectables=[], managed=False, client=None):
-        self._client = client or get_redis_client()
+class RemoteReference:
+
+    def __init__(self, referenced, managed=False, client=None):
+        if isinstance(referenced, str):
+            referenced = [referenced]
+        if not isinstance(referenced, list):
+            raise TypeError("referenced must be a key (str) or"
+                            "a list of keys")
+        self._referenced = referenced
+
         # reference counter key
-        self._rck = '{}-{}'.format('ref', object_id)
-        self._collectables = [self._rck]
-        if isinstance(collectables, str):
-            collectables = [collectables]
-        self._collectables.extend(collectables)
+        self._rck = '{}-{}'.format('ref', self._referenced[0])
+        self._referenced.append(self._rck)
+        self._client = client or get_redis_client()
+
+        self._callback = None
         self.managed = managed
 
+    @property
+    def managed(self):
+        return self._callback is None
+
+    @managed.setter
+    def managed(self, value):
+        managed = value
+        
+        if self._callback is not None:
+            self._callback.atexit = False
+            self._callback.detach()
+
+        if managed:
+            self._callback = None
+        else:
+            self._callback = weakref.finalize(self, type(self)._finalize,
+                self._client, self._rck, self._referenced)
+
     def __getstate__(self):
-        return (self._client, self._rck, 
-            self._collectables, self.managed)
+        return (self._rck, self._referenced, 
+            self._client, self.managed)
 
     def __setstate__(self, state):
-        (self._client, self._rck, 
-            self._collectables, self.managed) = state
+        (self._rck, self._referenced, 
+            self._client) = state[:-1]
+        self._callback = None
+        self.managed = state[-1]
         self.incref()
 
     def incref(self):
@@ -500,24 +528,15 @@ class Reference:
 
     def refcount(self):
         count = self._client.get(self._rck)
-        return 1 if count is None else count + 1
-
-    def __del__(self):
-        if not self.managed:
-            try:
-                refcount = self.decref()
-                if refcount < 0:
-                    self.collect()
-            except ImportError:
-                # FIXME: can't use the client while python is closing
-                # only happens when the "last" scope gets garbage collected
-                # and it contains an object with a reference
-                # Temp solution 1: delete the object explicitly
-                #   del mylist
-                #   del myqueue
-                # Temp solution 2: always define main inside a function
-                pass
+        return 1 if count is None else int(count) + 1
 
     def collect(self):
-        self._client.delete(*self._collectables)
-        self._collectables = []
+        if len(self._referenced) > 0:
+            self._client.delete(*self._referenced)
+            self._referenced = []
+
+    @staticmethod
+    def _finalize(client, rck, referenced):
+        count = int(client.decr(rck, 1))
+        if count < 0 and len(referenced) > 0:
+            client.delete(*referenced)

@@ -102,7 +102,7 @@ class BaseManager:
         pass
 
     def start(self, initializer=None, initargs=()):
-        pass
+        self._managing = True
 
     def _create(self, typeid, *args, **kwds):
         '''
@@ -117,24 +117,21 @@ class BaseManager:
         '''
         Return the number of shared objects
         '''
-        pass
+        return len(self._mrefs)
 
     def __enter__(self):
-        self._managing = True
+        self.start()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.shutdown()
-        self._managing = False
-
-    # def __del__(self):
-    #     self.shutdown()
 
     def shutdown(self):
         if self._managing:
             for ref in self._mrefs:
                 ref.collect()
             self._mrefs = []
+            self._managing = False
 
     @classmethod
     def register(cls, typeid, proxytype=None, callable=None, exposed=None,
@@ -169,8 +166,7 @@ class BaseProxy(object):
 
         self._pickler = pickler if serializer is None else serializer
         self._client = util.get_redis_client()
-        self._ref = util.Reference(self._oid, self._oid,
-            client=self._client)
+        self._ref = util.RemoteReference(self._oid, client=self._client)
 
     def _getvalue(self):
         '''

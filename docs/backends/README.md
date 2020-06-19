@@ -1,4 +1,4 @@
-# Available Cloudbutton plugins
+# Available Cloudbutton backends
 
 Compute backends:
 

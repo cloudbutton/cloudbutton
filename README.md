@@ -1,7 +1,7 @@
 # Cloudbutton Toolkit
 
-**The Cloudbutton Toolkit is a Python multicloud library for running serverless jobs**   
-It currently supports AWS, IBM Cloud, Google Cloud, Microsoft Azure, Alibaba Aliyun, and more. See [plugins](https://github.com/cloudbutton/cloudbutton/tree/master/docs/backends).
+**Cloudbutton Toolkit is a Python multicloud library for running serverless jobs**   
+It currently supports AWS, IBM Cloud, Google Cloud, Microsoft Azure, Alibaba Aliyun, and more. See [backends](docs/backends).
 
 ### Quick start
 Run functions in the cloud using the [multiprocessing](https://docs.python.org/3.6/library/multiprocessing.html) API:
@@ -72,7 +72,29 @@ Use remote in-memory cache for fast IPC and synchronization
 - [API Examples](https://github.com/cloudbutton/cloudbutton/tree/master/examples)
 - [Toolkit Examples](https://github.com/cloudbutton/examples)
 
-## [Plugins](https://github.com/cloudbutton/cloudbutton/tree/master/docs/backends)
+## Backends
+
+Compute backends:
+
+- [IBM Cloud Functions](docs/backends/compute/ibm_cf.md)
+- [IBM Coligo](docs/backends/compute/ibm_cf.md)
+- [AWS Lambda](docs/backends/compute/aws_lambda.md)
+- [Microsoft Azure Functions](docs/backends/compute/azure_fa.md)
+- [Google Cloud Functions](docs/backends/compute/gcp_functions.md)
+- [Google Cloud Run](docs/backends/compute/gcp_run.md)
+- [Alibaba Aliyun Function Compute](docs/backends/compute/aliyun_fc.md)
+- [Knative](docs/backends/compute/knative.md)
+
+Storage backends:
+
+- [IBM Cloud Object Storage](docs/backends/storage/ibm_cos.md)
+- [AWS S3](docs/backends/storage/aws_s3.md)
+- [Microsoft Azure Blob](docs/backends/storage/azure_blob.md)
+- [Google Storage](docs/backends/storage/google_storage.md)
+- [Alibaba Aliyun Object Storage Service](docs/backends/storage/aliyun_oss.md)
+- [Ceph](docs/backends/storage/ceph.md)
+- [Redis](docs/backends/storage/redis.md)
+- [Swift](docs/backends/storage/swift.md)
 
 ## Use cases
 - [Serverless benchmarks](https://cloudbutton.github.io/benchmarks)

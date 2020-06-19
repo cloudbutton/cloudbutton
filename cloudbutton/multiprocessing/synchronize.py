@@ -47,20 +47,21 @@ class SemLock:
         self._name = 'semlock-' + util.get_uuid()
         self._max_value = max_value
         self._client = util.get_redis_client()
-        self._client.rpush(self._name, *([''] * value))
+        if value != 0:
+            self._client.rpush(self._name, *([''] * value))
 
         self._lua_release = self._client.register_script(Semaphore.LUA_RELEASE_SCRIPT)
         util.make_stateless_script(self._lua_release)
 
-        self._ref = util.Reference(self._name, self._name, client=self._client)
+        self._ref = util.RemoteReference(self._name, client=self._client)
 
     def __getstate__(self):
-        return (self._name, self._max_value, 
-                self._client, self._lua_release)
+        return (self._name, self._max_value, self._client,
+            self._lua_release, self._ref)
 
     def __setstate__(self, state):
-        (self._name, self._max_value,
-         self._client, self._lua_release) = state
+        (self._name, self._max_value, self._client,
+            self._lua_release, self._ref) = state
 
     def __enter__(self):
         self.acquire()
@@ -160,7 +161,7 @@ class Condition:
             self._client = self._lock._client
         
         self._notify_handle = 'condition-notify-' + util.get_uuid()
-        self._ref = util.Reference(self._notify_handle, self._notify_handle,
+        self._ref = util.RemoteReference(self._notify_handle,
             client=self._client)
 
 
@@ -253,7 +254,7 @@ class Event:
         self._cond = Condition()
         self._client = self._cond._client
         self._flag_handle = 'event-flag-' + util.get_uuid()
-        self._ref = util.Reference(self._flag_handle, self._flag_handle,
+        self._ref = util.RemoteReference(self._flag_handle,
             client=self._client)
 
     def is_set(self):
@@ -284,8 +285,8 @@ class Barrier(threading.Barrier):
         uuid = util.get_uuid()
         self._state_handle = 'barrier-state-' + uuid
         self._count_handle = 'barrier-count-' + uuid
-        self._ref = util.Reference(self._state_handle, 
-            collectables=[self._state_handle, self._count_handle],
+        self._ref = util.RemoteReference(
+            referenced=[self._state_handle, self._count_handle],
             client=self._client)
         self._action = action
         self._timeout = timeout

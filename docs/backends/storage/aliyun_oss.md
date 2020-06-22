@@ -2,6 +2,8 @@
 
 Cloudbutton toolkit with Aliyun Object Storage Service as storage backend.
 
+### Installation
+
 ### Configuration
 
 1. Edit your cloudbutton config file and add the following keys:
@@ -19,4 +21,4 @@ Cloudbutton toolkit with Aliyun Object Storage Service as storage backend.
    - `public_endpoint`: public endpoint (URL) to the service. OSS and FC endpoints are different.
    - `internal_endpoint`: internal endpoint (URL) to the service. Provides cost-free inbound and outbound traffic among services from the same intranet (region).
    - `access_key_id`: Access Key Id.
-   - `access_key_secret`: Access Key Secret. 
+   - `access_key_secret`: Access Key Secret.

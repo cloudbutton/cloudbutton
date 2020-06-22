@@ -1,6 +1,6 @@
 # Cloudbutton on AWS Lambda
 
-Cloudbutton toolkit with AWS Lambda as compute backend.
+Cloudbutton toolkit with *AWS Lambda* as compute backend.
 
 ### Installation
 

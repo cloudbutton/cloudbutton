@@ -43,16 +43,16 @@ IBM Coligo is based on Knative, so the only requirement to make it working is to
    export KUBECONFIG=/home/myuser/.bluemix/plugins/coligo/myproject-b59a1c9f-5ds6-j1sm5.yaml
    ```
 
-7. [Install the Docker CE version](https://docs.docker.com/get-docker/) (PyWren needs to built the default runtime the first time you run a script)
+6. [Install the Docker CE version](https://docs.docker.com/get-docker/) (PyWren needs to built the default runtime the first time you run a script)
 
-8. Login to your docker account:
+7. Login to your docker account:
    ```bash
    docker login
    ```
 
 ### Configuration
 
-6. Edit your cloudbutton config file and add the following keys:
+8. Edit your cloudbutton config file and add the following keys:
 
    ```yaml
    cloudbutton:
@@ -80,7 +80,7 @@ IBM Coligo is based on Knative, so the only requirement to make it working is to
 
 ### Verify
 
-7. Test if PyWren on Coligo is working properly:
+9. Test if PyWren on Coligo is working properly:
 
    Run the next command:
    

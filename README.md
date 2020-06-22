@@ -1,12 +1,27 @@
+
 # Cloudbutton Toolkit
 
-**Cloudbutton Toolkit is a Python multicloud library for running serverless jobs**   
-It currently supports AWS, IBM Cloud, Google Cloud, Microsoft Azure, Alibaba Aliyun, and more. See [backends](docs/backends).
+The Cloudbutton toolkit is a multicloud framework that enables the transparent execution of unmodified, regular Python code against disaggregated cloud resources. With the Cloudbutton toolkit, there is no new API to learn. It provides the same API as Python's standard [**multiprocessing**](https://docs.python.org/3/library/multiprocessing.html) and [**concurrent.futures**](https://docs.python.org/3/library/concurrent.futures.html) libraries. Any program built on top of these libraries can be run on any of the major serverless computing services. Its multicloud-agnostic architecture ensures portability across Clouds and overcomes vendor lock-in. Altogether, this represents a significant step forward in the programmability of  the cloud.
+
+
+Currently, the cloudbutton toolkit supports all these backends:
+
 
 ### Quick start
-Run functions in the cloud using the [multiprocessing](https://docs.python.org/3.6/library/multiprocessing.html) API:
+
+1. Install cloudbutton toolkit package:
+
+   ```
+   # pip install cloudbutton
+   ```
+
+2. Configure your desired storage and compute backends following the instructions in [config/](config/).
+
+
+3. Run functions in the Cloud using the **multiprocessing** API:
 
    ```python
+    # from multiprocessing import Pool
     from cloudbutton.multiprocessing import Pool
     
     def incr(x):
@@ -17,55 +32,7 @@ Run functions in the cloud using the [multiprocessing](https://docs.python.org/3
     print(res)
    ```
 
-Use cloud storage as a filesystem:  
 
-   ```python
-    from cloudbutton.multiprocessing import Pool
-    from cloudbutton.cloud_proxy import os, open
-
-    filename = 'bar/foo.txt'
-    with open(filename, 'w') as f:
-        f.write('Hello world!')
-
-    dirname = os.path.dirname(filename)
-    print(os.listdir(dirname))
-
-    def read_file(filename):
-        with open(filename, 'r') as f:
-            return f.read()
-
-    pool = Pool()
-    res = pool.apply(read_file, (filename,))
-    print(res)
-
-    os.remove(filename)
-    print(os.listdir(dirname))
-   ```
-
-Use remote in-memory cache for fast IPC and synchronization  
-
-   ```python
-    from cloudbutton.multiprocessing import Pool, Manager, Lock
-    from random import choice
-
-    def count_chars(char, text, record, lock):
-        count = text.count(char)
-        record[char] = count
-        with lock:
-            record['total'] += count
-
-    pool = Pool()
-    record = Manager().dict()
-    lock = Lock()
-
-    # random text
-    alphabet = 'abcdefghijklmnopqrstuvwxyz'
-    text = ''.join([choice(alphabet) for _ in range(1000)])
-
-    record['total'] = 0
-    pool.map(count_chars, [(char, text, record, lock) for char in alphabet])
-    print(record.todict())
-   ```
 
 ## Documentation
 - [Website](https://cloudbutton.github.io)

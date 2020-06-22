@@ -1,7 +1,9 @@
 # CloudButton on Microsoft Azure
 
 Cloudbutton toolkit with Azure Blob Storage as storage backend.
- 
+
+### Installation
+
 ### Configuration
 
 1. Edit your cloudbutton config file and add the following keys:

@@ -2,25 +2,31 @@
 
 Cloudbutton toolkit with Azure Function App as compute backend.
 
-### Requirements
+### Installation
 
   1. Install [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
- 
+  
+  2. Sign in with the Azure CLI:
+  
+    ```bash
+      $ az login
+    ```
+
 ### Configuration
 
-  2. Edit your cloudbutton config file and add the following keys:
+  3. Edit your cloudbutton config file and add the following keys:
 
-```yaml
-  cloudbutton:
-    compute_backend : azure_fa
-
-  azure_fa:
-    resource_group : <RESOURCE_GROUP>
-    location : <CONSUMPTION_PLAN_LOCATION>
-    account_name : <STORAGE_ACCOUNT_NAME>
-    account_key : <STORAGE_ACCOUNT_KEY>
-    functions_version : <AZURE_FUNCTIONS_VERSION>
-```
+    ```yaml
+      cloudbutton:
+        compute_backend : azure_fa
+    
+      azure_fa:
+        resource_group : <RESOURCE_GROUP>
+        location : <CONSUMPTION_PLAN_LOCATION>
+        account_name : <STORAGE_ACCOUNT_NAME>
+        account_key : <STORAGE_ACCOUNT_KEY>
+        functions_version : <AZURE_FUNCTIONS_VERSION>
+    ```
    - `resource_group`: the Resource Group of your Storage Account. *Storage Account* > `account_name` > *Overview*.
    - `account_name`: the name of the Storage Account.
    - `account_key`: an Account Key, found in *Storage Account* > `account_name` > *Settings* > *Access Keys*.
@@ -28,12 +34,7 @@ Cloudbutton toolkit with Azure Function App as compute backend.
       Use `az functionapp list-consumption-locations` to view available locations.
    - `functions_version`: optional, Azure Functions runtime version (2 or 3, defaults to 2).
       
-  3. Sign in with the Azure CLI:
-  
-```bash
-  $ az login
-```
-  
+
 ### Verify
 
 4. Test if Cloudbutton on Azure is working properly:

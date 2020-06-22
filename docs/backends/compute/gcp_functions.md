@@ -1,6 +1,6 @@
 # Cloudbutton on GCP Functions
 
-Cloudbutton toolkit with GCP Functions as storage backend.
+Cloudbutton toolkit with *GCP Functions*ssss as storage backend.
 
 ### Installation
 
@@ -12,17 +12,17 @@ Cloudbutton toolkit with GCP Functions as storage backend.
  
  4. Click on *Create Service Account*. Name the service account `cloudbutton-executor` or similar. Then click on *Create*.
  
- 6. Add the following roles to the service account:
+ 5. Add the following roles to the service account:
 	 - Service Account User
 	 - Cloud Functions Admin
 	 - Pub/Sub Admin
 	 - Storage Admin
 
- 7. Click on *Continue*. Then, click on *Create key*. Select *JSON* and then *Create*. Download the JSON file to a secure location in you computer. Click *Done*.
+ 6. Click on *Continue*. Then, click on *Create key*. Select *JSON* and then *Create*. Download the JSON file to a secure location in you computer. Click *Done*.
 
 ### Configuration
 
-8. Edit your cloudbutton config file and add the following keys:
+7. Edit your cloudbutton config file and add the following keys:
 
 ```yaml
     cloudbutton:
@@ -42,7 +42,7 @@ Cloudbutton toolkit with GCP Functions as storage backend.
 
 ### Verify
 
-9. Test if Cloudbutton toolkit on Lambda is working properly:
+8. Test if Cloudbutton toolkit on Lambda is working properly:
 
    Run the next command:
    

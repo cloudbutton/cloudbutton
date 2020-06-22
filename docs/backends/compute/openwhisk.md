@@ -77,7 +77,7 @@ Cloudbutton toolkit with *OpenWhisk* as compute backend. Cloudbutton can also ru
 
 ### Verify
 
-7. Test if Cloudbutton on Openwhisk is working properly:
+4. Test if Cloudbutton on Openwhisk is working properly:
 
    Run the next command:
    

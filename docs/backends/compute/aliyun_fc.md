@@ -1,6 +1,6 @@
 # CloudButton on Alibaba Cloud (Aliyun)
 
-Cloudbutton toolkit with Aliyun Function Compute as compute backend.
+Cloudbutton toolkit with *Aliyun Function Compute* as compute backend.
 
 ### Configuration
 

@@ -12,23 +12,23 @@ Cloudbutton toolkit with IBM COS as storage backend.
 
 ### Configuration
 
-2. Login to IBM Cloud and open up your dashboard. Then navigate to your instance of Object Storage.
+3. Login to IBM Cloud and open up your dashboard. Then navigate to your instance of Object Storage.
 
-3. In the side navigation, click `Endpoints` to find your API endpoint. You must copy both public and private endpoints of the region where you created your bucket.
+4. In the side navigation, click `Endpoints` to find your API endpoint. You must copy both public and private endpoints of the region where you created your bucket.
 
-3. Create the credentials to access to your COS account (Choose one option):
+5. Create the credentials to access to your COS account (Choose one option):
  
 #### Option 1 (COS API Key):
 
-4. In the side navigation, click `Service Credentials`.
+6. In the side navigation, click `Service Credentials`.
 
-5. Click `New credential +` and provide the necessary information.
+7. Click `New credential +` and provide the necessary information.
 
-6. Click `Add` to generate service credential.
+8. Click `Add` to generate service credential.
 
-7. Click `View credentials` and copy the *apikey* value.
+9. Click `View credentials` and copy the *apikey* value.
 
-8. Edit your cloudbutton config file and add the following keys:
+10. Edit your cloudbutton config file and add the following keys:
     ```yaml
     cloudbutton:
         storage_backend: ibm_cos
@@ -41,17 +41,17 @@ Cloudbutton toolkit with IBM COS as storage backend.
 
 #### Option 2 (COS HMAC credentials):
 
-4. In the side navigation, click `Service Credentials`.
+6. In the side navigation, click `Service Credentials`.
 
-5. Click `New credential +`.
+7. Click `New credential +`.
 
-6. Click on advanced options and enable `Include HMAC Credential` button. 
+8. Click on advanced options and enable `Include HMAC Credential` button. 
 
-7. Click `Add` to generate service credential.
+9. Click `Add` to generate service credential.
 
-8. Click `View credentials` and copy the *access_key_id* and *secret_access_key* values.
+10. Click `View credentials` and copy the *access_key_id* and *secret_access_key* values.
 
-9. Edit your cloudbutton config file and add the following keys:
+11. Edit your cloudbutton config file and add the following keys:
     ```yaml
     cloudbutton:
         storage_backend: ibm_cos
@@ -65,13 +65,13 @@ Cloudbutton toolkit with IBM COS as storage backend.
 
 #### Option 3 (IBM IAM API Key):
 
-4. Navigate to the [IBM IAM dashboard](https://cloud.ibm.com/iam/apikeys)
+6. Navigate to the [IBM IAM dashboard](https://cloud.ibm.com/iam/apikeys)
 
-5. Click `Create an IBM Cloud API Key` and provide the necessary information.
+7. Click `Create an IBM Cloud API Key` and provide the necessary information.
 
-6. Copy the generated IAM API key (You can only see the key the first time you create it, so make sure to copy it).
+8. Copy the generated IAM API key (You can only see the key the first time you create it, so make sure to copy it).
 
-7. Edit your cloudbutton config file and add the following keys:
+9. Edit your cloudbutton config file and add the following keys:
     ```yaml
     cloudbutton:
         storage_backend: ibm_cos

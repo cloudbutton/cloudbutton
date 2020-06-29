@@ -12,7 +12,7 @@ Cloudbutton toolkit with *Docker* as compute backend. Cloudbutton can run functi
 
 #### Option 1 (Localhost):
 
-3. Edit your cloudbutton config file and add the following keys:
+2. Edit your cloudbutton config file and add the following keys:
 
    ```yaml
    cloudbutton:
@@ -25,7 +25,7 @@ Cloudbutton toolkit with *Docker* as compute backend. Cloudbutton can run functi
 
 #### Option 2 (Remote host):
 
-3. Edit your cloudbutton config file and add the following keys:
+2. Edit your cloudbutton config file and add the following keys:
 
    ```yaml
    cloudbutton:
@@ -48,7 +48,7 @@ Cloudbutton toolkit with *Docker* as compute backend. Cloudbutton can run functi
 
 ### Verify
 
-7. Test if Cloudbutton on Docker is working properly:
+3. Test if Cloudbutton on Docker is working properly:
 
    Run the next command:
    

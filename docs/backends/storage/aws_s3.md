@@ -8,7 +8,10 @@ Cloudbutton toolkit with AWS S3 as storage backend.
 
 2. Navigate to *S3* and *create a bucket*. Type a name (e.g. `cloudbutton-data`). The bucket should be created in the same region as the Lambda functions are expected to be run (mainly to avoid inter-region data transfer charges).
 
-3. Edit your cloudbutton config file (`~/.cloudbutton_config`) and add the following keys:
+
+### Configuration
+
+3. Edit your cloudbutton config file and add the following keys:
 
 ```yaml
     cloudbutton:

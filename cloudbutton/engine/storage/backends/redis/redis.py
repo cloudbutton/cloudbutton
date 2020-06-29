@@ -9,11 +9,11 @@ class RedisBackend:
 
     def __init__(self, config, bucket=None, executor_id=None):
         del config['user_agent']
-        self.client = redis.StrictRedis(**config)
+        self._client = redis.StrictRedis(**config)
         self.bucket = bucket or ''
 
     def get_client(self):
-        return self.client
+        return self._client
 
     def put_object(self, bucket_name, key, data):
         """
@@ -33,7 +33,7 @@ class RedisBackend:
         # NOTE: could use a lua script and add from the lowest
         # to the highest dir and stop when SADD returns 0 since
         # then we can assume higher dirs already exist
-        pipeline = self.client.pipeline(False)
+        pipeline = self._client.pipeline(False)
 
         # create parent dirs
         for i in range(1, len(components)-1):
@@ -58,9 +58,17 @@ class RedisBackend:
         :return: Data of the object
         :rtype: str/bytes
         """
+
         redis_key = self._format_key(bucket_name, key)
         try:
-            data = self.client.get(redis_key)
+            if 'Range' in extra_get_args:   # expected format: Range='bytes=L-H'
+                bytes_range = extra_get_args.pop('Range')[6:]
+                start, end = self._parse_range(bytes_range)
+                data = self._client.getrange(redis_key, start, end)
+                print(start, end)
+            else:
+                data = self._client.get(redis_key)
+
         except redis.exceptions.ResponseError:
             raise StorageNoSuchKeyError(bucket_name, key)
 
@@ -81,7 +89,14 @@ class RedisBackend:
         :return: Data of the object
         :rtype: dict
         """
-        return {}   # TODO
+        redis_key = self._format_key(bucket_name, key)
+        try:
+            meta = self._client.debug_object(redis_key)
+        except redis.exceptions.ResponseError:
+            raise StorageNoSuchKeyError(bucket_name, key)
+
+        meta['content-length'] = meta['serializedlength'] - 1
+        return meta
 
     def delete_object(self, bucket_name, key):
         """
@@ -99,7 +114,7 @@ class RedisBackend:
         """
         redis_key_list = [self._format_key(bucket_name, k) for k in key_list]
 
-        pipeline = self.client.pipeline(False)
+        pipeline = self._client.pipeline(False)
         pipeline.delete(*redis_key_list)
 
         for full_path in redis_key_list:
@@ -117,7 +132,7 @@ class RedisBackend:
         :return: metadata of the bucket
         :rtype: dict
         """
-        return {}   # TODO
+        return {}
 
     def bucket_exists(self, bucket_name):
         """
@@ -125,7 +140,7 @@ class RedisBackend:
         Throws StorageNoSuchKeyError if the given bucket does not exist.
         :param bucket_name: name of the bucket
         """
-        return bool(self.client.exists(self._format_key(bucket_name, '')))
+        return bool(self._client.exists(self._format_key(bucket_name, '')))
 
     def list_objects(self, bucket_name, prefix=None):
         """
@@ -135,7 +150,7 @@ class RedisBackend:
         :return: List of objects in bucket that match the given prefix.
         :rtype: list of dict
         """
-        pipeline = self.client.pipeline(False)
+        pipeline = self._client.pipeline(False)
         for key in self.list_keys(bucket_name, prefix):
             pipeline.get(self._format_key(bucket_name, key))
         return pipeline.execute()
@@ -152,7 +167,7 @@ class RedisBackend:
         redis_prefix = self._format_key(bucket_name, prefix)
 
         pdir = '/'.join(redis_prefix.split('/')[:-1]) + '/'
-        dir_keys = [key.decode() for key in self.client.smembers(pdir)]
+        dir_keys = [key.decode() for key in self._client.smembers(pdir)]
         key_list = []
 
         for key in dir_keys:
@@ -168,7 +183,7 @@ class RedisBackend:
 
         
     def _walk(self, bucket_name, dir_key):
-        dir_keys = [key.decode() for key in self.client.smembers(dir_key)]
+        dir_keys = [key.decode() for key in self._client.smembers(dir_key)]
         key_list = []
 
         for key in dir_keys:
@@ -183,3 +198,23 @@ class RedisBackend:
 
     def _format_key(self, bucket, key):
         return '/'.join([bucket, key])
+
+    def _parse_range(self, bytes_range):
+        if '--' in bytes_range:
+            bytes_range = bytes_range.replace('--', '-')
+            sign = -1
+        else:
+            sign = 1
+
+        if '-' in bytes_range:
+            bytes_range = bytes_range.split('-')
+            if bytes_range[0] == '':
+                end = int(bytes_range[1]) * -1
+                start = end
+            else:
+                start = int(bytes_range[0])
+                end = int(bytes_range[1]) * sign
+        else:
+            start = end = int(bytes_range)
+
+        return start, end

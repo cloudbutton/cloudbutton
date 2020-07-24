@@ -165,7 +165,7 @@ class AWSLambdaBackend:
                 layer_bytes)
         
         layers_arn.append(dependencies_layer)
-        #layers_arn.append(self._get_scipy_layer_arn(runtime_name))
+        layers_arn.append(self._get_scipy_layer_arn(runtime_name))
         return layers_arn
 
     def _create_handler_bin(self):

@@ -25,8 +25,8 @@ from cloudbutton.version import __version__
 
 logger = logging.getLogger(__name__)
 
-COMPUTE_BACKEND_DEFAULT = 'ibm_cf'
-STORAGE_BACKEND_DEFAULT = 'ibm_cos'
+COMPUTE_BACKEND_DEFAULT = 'localhost'
+STORAGE_BACKEND_DEFAULT = 'localhost'
 
 STORAGE_BASE_FOLDER = "cloudbutton-data"
 DOCKER_BASE_FOLDER = "cloudbutton-docker"

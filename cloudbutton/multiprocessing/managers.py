@@ -18,7 +18,7 @@ from . import pool
 from . import synchronize
 from . import queues
 from . import util
-import pickle as pickler
+from .reduction import DefaultPickler
 import redis
 from copy import deepcopy
 
@@ -142,7 +142,7 @@ class BaseManager:
         def temp(self, *args, **kwds):
             util.debug('requesting creation of a shared %r object', typeid)
             proxy = proxytype(*args, **kwds)
-            if self._managing and can_manage:
+            if self._managing and can_manage and hasattr(proxy, '_ref'):
                 proxy._ref.managed = True
                 self._mrefs.append(proxy._ref)
             return proxy
@@ -164,7 +164,7 @@ class BaseProxy(object):
         # object id
         self._oid = '{}-{}'.format(typeid, util.get_uuid())
 
-        self._pickler = pickler if serializer is None else serializer
+        self._pickler = DefaultPickler() if serializer is None else serializer
         self._client = util.get_redis_client()
         self._ref = util.RemoteReference(self._oid, client=self._client)
 

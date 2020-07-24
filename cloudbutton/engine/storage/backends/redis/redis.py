@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 class RedisBackend:
 
     def __init__(self, config, bucket=None, executor_id=None):
-        del config['user_agent']
+        config.pop('user_agent', None)
         self._client = redis.StrictRedis(**config)
         self.bucket = bucket or ''
 
@@ -65,7 +65,6 @@ class RedisBackend:
                 bytes_range = extra_get_args.pop('Range')[6:]
                 start, end = self._parse_range(bytes_range)
                 data = self._client.getrange(redis_key, start, end)
-                print(start, end)
             else:
                 data = self._client.get(redis_key)
 

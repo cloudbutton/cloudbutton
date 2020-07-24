@@ -125,7 +125,7 @@ class AWSLambdaBackend:
         
         # Get modules name & version from requirements.txt
         base_path = os.path.dirname(os.path.abspath(cloudbutton.__file__))
-        requirements_path = os.path.join(base_path, 'engine', 'backends', 'compute', 'aws_lambda', 'requirements.txt')
+        requirements_path = os.path.join(base_path, 'engine', 'compute', 'backends', 'aws_lambda', 'requirements.txt')
         dependencies = []
 
         with open(requirements_path, 'r') as requirements_file:
@@ -136,7 +136,7 @@ class AWSLambdaBackend:
         dependencies = list(map(lambda x : x.replace('\n', ''), dependencies))
         # old_stdout = sys.stdout     # Disable stdout
         # sys.stdout = open(os.devnull, 'w')
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-t', aws_lambda_config.LAYER_DIR_PATH, '--system'] + dependencies)
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-t', aws_lambda_config.LAYER_DIR_PATH] + dependencies)
         # sys.stdout = old_stdout
 
         # Compress modules
@@ -165,7 +165,7 @@ class AWSLambdaBackend:
                 layer_bytes)
         
         layers_arn.append(dependencies_layer)
-        layers_arn.append(self._get_scipy_layer_arn(runtime_name))
+        #layers_arn.append(self._get_scipy_layer_arn(runtime_name))
         return layers_arn
 
     def _create_handler_bin(self):

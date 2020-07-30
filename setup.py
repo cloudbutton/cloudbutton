@@ -35,7 +35,7 @@ setup(
         'google-cloud-storage==1.20.0',
         'google-cloud-pubsub==1.0.0',
         'google-api-python-client==1.7.11',
-        'google-auth==1.18.0',
+        'google-auth>=1.19.1',
         'aliyun-fc2',
         'oss2',
         'azure-storage-blob==2.1.0',

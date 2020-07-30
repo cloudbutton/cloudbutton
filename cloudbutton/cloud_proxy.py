@@ -34,7 +34,10 @@ class CloudStorage(InternalStorage):
             config = load_yaml_config(config)
             self._config = extract_storage_config(config)
         elif isinstance(config, dict):
-            self._config = extract_storage_config(config)
+            if 'cloudbutton' in config:
+                self._config = extract_storage_config(config)
+            else:
+                self._config = config
         else:
             self._config = extract_storage_config(default_config())
         super().__init__(self._config)

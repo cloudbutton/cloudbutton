@@ -248,6 +248,9 @@ class ListProxy(BaseProxy):
             start, end, step = deslice(i)
             if start is None:
                 return
+                
+            if end < 0:
+                end = len(self) + end
 
             pipeline = self._client.pipeline(transaction=False)
             try:
@@ -313,7 +316,11 @@ class ListProxy(BaseProxy):
             if serialized is not None:
                 return self._pickler.loads(serialized)
         else:
-            raise NotImplementedError
+            item = self[index]
+            sentinel = util.get_uuid()
+            self[index] = sentinel
+            self.remove(sentinel)
+            return item
 
     def __deepcopy__(self, memo):
         selfcopy = type(self)()
@@ -327,14 +334,14 @@ class ListProxy(BaseProxy):
 
     def __add__(self, x):
         # FIXME: list only allows concatenation to other list objects
-        #        (altough it can to be extended by iterables)
+        #        (altough it can now be extended by iterables)
         # newlist = deepcopy(self)
         # return newlist.__iadd__(x)
         return self[:] + x
 
     def __iadd__(self, x):
         # FIXME: list only allows concatenation to other list objects
-        #        (altough it can to be extended by iterables)
+        #        (altough it can now be extended by iterables)
         self.extend(x)
         return self       
 
@@ -370,36 +377,43 @@ class ListProxy(BaseProxy):
         self._client.lrem(self._oid, 1, serialized)
         return self
 
-    def reverse(self):
-        length = len(self)
-        rev = reversed(self)
-        self.extend(rev)
-        self._client.ltrim(self._oid, length, -1)
-        return self
-
-    def sort(self, key=None, reverse=False):
-        length = len(self)
-        sortd = sorted(self, key=key, reverse=reverse)
-        self.extend(sortd)
-        self._client.ltrim(self._oid, length, -1)
-        return self
-
-    def index(self, obj, start=0, end=-1):
-        return self[:].index(obj, start, end)
-    
-    def count(self, obj):
-        return self[:].count(obj)
-
     def __delitem__(self, i):
-        raise NotImplementedError
-
-    def insert(self, index, obj):
-        raise NotImplementedError
+        sentinel = util.get_uuid()
+        self[i] = sentinel
+        self.remove(sentinel)
 
     def tolist(self):
         serialized = self._client.lrange(self._oid, 0, -1)
         unserialized = [self._pickler.loads(obj) for obj in serialized]
         return unserialized
+
+    # The following methods can't be (properly) implemented on Redis
+    # To still provide the functionality, the list is fetched
+    # entirely, operated in-memory and then put back to Redis
+
+    def reverse(self):
+        rev = reversed(self[:])
+        self._client.delete(self._oid)
+        self.extend(rev)
+        return self
+
+    def sort(self, key=None, reverse=False):
+        sortd = sorted(self[:], key=key, reverse=reverse)
+        self._client.delete(self._oid)
+        self.extend(sortd)
+        return self
+
+    def index(self, obj, start=0, end=-1):
+        return self[:].index(obj, start, end)
+
+    def count(self, obj):
+        return self[:].count(obj)
+
+    def insert(self, index, obj):
+        new_list = self[:]
+        new_list.insert(index, obj)
+        self._client.delete(self._oid)
+        self.extend(new_list)
 
 
 class DictProxy(BaseProxy):
@@ -566,13 +580,10 @@ class ValueProxy(BaseProxy):
     value = property(get, set)
 
 
-def ArrayProxy(typecode, sequence, lock=True):
-    raise NotImplementedError
-
-# ArrayProxy = MakeProxyType('ArrayProxy', (
-#     '__len__', '__getitem__', '__setitem__'
-#     ))
-
+class ArrayProxy(ListProxy):
+    def __init__(self, typecode, sequence, lock=True):
+        super().__init__(sequence)
+        
 
 #
 # Definition of SyncManager

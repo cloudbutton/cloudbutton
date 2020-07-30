@@ -59,6 +59,13 @@ def dump(obj, file, protocol=None):
     '''Replacement for pickle.dump() using ForkingPickler.'''
     ForkingPickler(file, protocol).dump(obj)
 
+
+class DefaultPickler:
+    load = pickle.load
+    loads = pickle.loads
+    dump = pickle.dump
+    dumps = pickle.dumps
+
 #
 # Platform specific definitions
 #

@@ -640,16 +640,22 @@ class ApplyResult(object):
     def get(self, timeout=None):
         self.wait(timeout)
         self._value = self._executor.get_result(self._futures)
+
+        if self._callback is not None:
+            self._callback(self._value)
+
         return self._value
 
     def _set(self, i, success_result):
         self._success, self._value = success_result
         if self._callback and self._success:
             self._callback(self._value)
+            self._callback = None
         if self._error_callback and not self._success:
             self._error_callback(self._value)
-        self._event.set()
-        del self._cache[self._job]
+            self._callback = None
+        #self._event.set()
+        #del self._cache[self._job]
 
 
 AsyncResult = ApplyResult  # create alias -- see #17805

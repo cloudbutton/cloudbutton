@@ -33,8 +33,13 @@ class CloudStorage(InternalStorage):
         if isinstance(config, str):
             config = load_yaml_config(config)
             self._config = extract_storage_config(config)
+        elif isinstance(config, dict):
+            if 'cloudbutton' in config:
+                self._config = extract_storage_config(config)
+            else:
+                self._config = config
         else:
-            self._config = config or extract_storage_config(default_config())
+            self._config = extract_storage_config(default_config())
         super().__init__(self._config)
 
     def __getstate__(self):
@@ -55,6 +60,9 @@ class CloudFileProxy:
     def __getattr__(self, name):
         # we only reach here if the attr is not defined
         return getattr(base_os, name)
+    
+    def open(self, filename, mode='r'):
+        return cloud_open(filename, mode=mode, cloud_storage=self._storage)
 
     def listdir(self, path='', suffix_dirs=False):
         if path == '':

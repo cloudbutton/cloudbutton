@@ -1,15 +1,17 @@
 
 # Cloudbutton Toolkit
 
-The Cloudbutton toolkit is a multicloud framework that enables the transparent execution of unmodified, regular Python code against disaggregated cloud resources. With the Cloudbutton toolkit, there is no new API to learn. It provides the same API as Python's standard [**multiprocessing**](https://docs.python.org/3/library/multiprocessing.html) and [**concurrent.futures**](https://docs.python.org/3/library/concurrent.futures.html) libraries. Any program built on top of these libraries can be run on any of the major serverless computing services. Its multicloud-agnostic architecture ensures portability across Clouds and overcomes vendor lock-in. Altogether, this represents a significant step forward in the programmability of  the cloud.
+The Cloudbutton toolkit is a multicloud framework that enables the transparent execution of unmodified, regular Python code against disaggregated cloud resources. With the Cloudbutton toolkit, there is no new API to learn. It provides the same API as the Python's standard [**multiprocessing**](https://docs.python.org/3/library/multiprocessing.html) library. Any program built on top of this libraries can be run on any of the major serverless computing services. Its multicloud-agnostic architecture ensures portability across Clouds and overcomes vendor lock-in. Altogether, this represents a significant step forward in the programmability of  the cloud.
 
 
 ### Quick start
 
-1. Install cloudbutton toolkit package:
+1. Install the cloudbutton toolkit package:
 
    ```
-   # pip install cloudbutton
+   git clone https://github.com/cloudbutton/cloudbutton
+   cd cloudbutton
+   python setup.py install
    ```
 
 2. Configure your desired storage and compute backends following the instructions in [config/](config/).

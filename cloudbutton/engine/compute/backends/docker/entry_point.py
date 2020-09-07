@@ -23,7 +23,7 @@ import pkgutil
 import multiprocessing
 
 from cloudbutton.version import __version__
-from cloudbutton.engine.agent import function_invoker
+from cloudbutton.engine.worker import function_invoker
 from cloudbutton.config import DOCKER_FOLDER
 
 

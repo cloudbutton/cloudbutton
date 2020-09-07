@@ -19,7 +19,6 @@ import logging
 import shutil
 import json
 import subprocess as sp
-import uuid
 import fc2
 from . import config as backend_config
 from cloudbutton.engine.utils import uuid_str
@@ -27,6 +26,7 @@ from cloudbutton.version import __version__
 import cloudbutton
 
 logger = logging.getLogger(__name__)
+
 
 class AliyunFunctionComputeBackend:
     """

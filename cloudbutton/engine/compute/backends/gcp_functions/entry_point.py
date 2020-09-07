@@ -17,7 +17,7 @@
 import logging
 import json
 import base64
-from cloudbutton.engine.agent.handler import function_handler
+from cloudbutton.engine.worker.handler import function_handler
 from cloudbutton.config import cloud_logging_config
 
 cloud_logging_config(logging.INFO)

@@ -37,7 +37,6 @@ import google.api_core.exceptions
 import cloudbutton
 from cloudbutton.version import __version__
 from cloudbutton.engine.utils import version_str
-from cloudbutton import config
 from cloudbutton.engine.storage import InternalStorage
 
 logger = logging.getLogger(__name__)

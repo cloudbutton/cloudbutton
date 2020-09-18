@@ -19,7 +19,7 @@ import itertools
 import collections
 import time
 import traceback
-from cloudbutton.engine.executor import FunctionExecutor
+from lithops.executor import FunctionExecutor
 
 # If threading is available then ThreadPool should be provided.  Therefore
 # we avoid top-level imports which are liable to fail on some systems.

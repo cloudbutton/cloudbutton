@@ -14,8 +14,8 @@
 # limitations under the License.
 #
 
-from cloudbutton.engine.executor import FunctionExecutor
-from cloudbutton.engine.wait import ALL_COMPLETED, ALWAYS
+from lithops.executor import FunctionExecutor
+from lithops.wait import ALL_COMPLETED, ALWAYS
 
 from . import util
 

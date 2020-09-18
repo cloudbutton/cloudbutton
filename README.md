@@ -14,7 +14,7 @@ The Cloudbutton toolkit is a multicloud framework that enables the transparent e
    python setup.py install
    ```
 
-2. Configure your desired storage and compute backends following the instructions in [config/](config/).
+2. Configure your desired storage and compute backends following the instructions in [config/](https://github.com/lithops-cloud/lithops/tree/master/config).
 
 
 3. Run functions in the Cloud using the **multiprocessing** API:

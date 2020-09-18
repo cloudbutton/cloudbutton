@@ -17,8 +17,8 @@
 import io
 import os as base_os
 from functools import partial
-from .engine.storage import InternalStorage
-from .engine.utils import is_cloudbutton_function
+from lithops.storage import InternalStorage
+from lithops.utils import is_lithops_function
 from .config import (default_config,
                     load_yaml_config, 
                     extract_storage_config)
@@ -176,7 +176,7 @@ def cloud_open(filename, mode='r', cloud_storage=None):
             return DelayedStringBuffer(action)
 
 
-if not is_cloudbutton_function():
+if not is_lithops_function():
     try:
         _storage = CloudStorage()
     except FileNotFoundError:

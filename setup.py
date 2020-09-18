@@ -12,6 +12,7 @@ setup(
     author_email='cloudlab@urv.cat',
     packages=find_packages(),
     install_requires=[
+        'lithops',
         'wheel',
         'Click',
         'pandas',

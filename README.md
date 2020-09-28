@@ -1,10 +1,21 @@
 
 # Cloudbutton Toolkit
 
-The Cloudbutton toolkit is a multicloud framework that enables the transparent execution of unmodified, regular Python code against disaggregated cloud resources. With the Cloudbutton toolkit, there is no new API to learn. It provides the same API as the Python's standard [**multiprocessing**](https://docs.python.org/3/library/multiprocessing.html) library. Any program built on top of this library can be run on any of the major serverless computing services. Its multicloud-agnostic architecture ensures portability across Clouds and overcomes vendor lock-in. Altogether, this represents a significant step forward in the programmability of  the cloud.
+The Cloudbutton toolkit is a multicloud framework that enables the transparent execution of unmodified, regular Python code against disaggregated cloud resources. With the Cloudbutton toolkit, there is no new API to learn. It provides the same API as the Python's standard [**multiprocessing**](https://docs.python.org/3/library/multiprocessing.html) library. Any program built on top of this library can be run on any of the major serverless computing services. Its multicloud-agnostic architecture ensures portability across Clouds and overcomes vendor lock-in.
+
+The Cloudbutton toolkit is built on top of the [Lithops framework](https://github.com/lithops-cloud/lithops), and currently, it supports all these backends:
+
+|Cloud|Compute Backend|Storage Backend|
+|---|---|---|
+|IBM Cloud| IBM Cloud Functions <br> IBM Code Engine| IBM Cloud Object Storage|
+|AWS | AWS Lambda|  AWS S3 |
+|Google Cloud | Google Cloud Functions <br> Google Cloud Run| Google Cloud Storage|
+|Microsoft Azure| Microsoft Azure Functions | Microsoft Azure Blob |
+|Alibaba Aliyun| Aliyun Function Compute | Aliyun Object Storage Service |
+|Generic| Knative | Ceph, Redis, Swift |
 
 
-### Quick start
+## Quick start
 
 1. Install the cloudbutton toolkit package:
 
@@ -14,7 +25,7 @@ The Cloudbutton toolkit is a multicloud framework that enables the transparent e
    python setup.py install
    ```
 
-2. Configure your desired storage and compute backends following the instructions in [config/](https://github.com/lithops-cloud/lithops/tree/master/config).
+2. [Configure your desired compute and storage backends in Lithops](https://github.com/lithops-cloud/lithops/tree/master/config).
 
 
 3. Run functions in the Cloud using the **multiprocessing** API:
@@ -35,31 +46,6 @@ The Cloudbutton toolkit is a multicloud framework that enables the transparent e
 - [Website](https://cloudbutton.github.io)
 - [API Examples](https://github.com/cloudbutton/cloudbutton/tree/master/examples)
 - [Toolkit Examples](https://github.com/cloudbutton/examples)
-
-
-## Backends
-
-Compute backends:
-
-- [IBM Cloud Functions](config/backends/compute/ibm_cf.md)
-- [IBM Coligo](config/backends/compute/ibm_cf.md)
-- [AWS Lambda](config/backends/compute/aws_lambda.md)
-- [Microsoft Azure Functions](config/backends/compute/azure_fa.md)
-- [Google Cloud Functions](config/backends/compute/gcp_functions.md)
-- [Google Cloud Run](config/backends/compute/gcp_run.md)
-- [Alibaba Aliyun Function Compute](config/backends/compute/aliyun_fc.md)
-- [Knative](config/backends/compute/knative.md)
-
-Storage backends:
-
-- [IBM Cloud Object Storage](config/backends/storage/ibm_cos.md)
-- [AWS S3](config/backends/storage/aws_s3.md)
-- [Microsoft Azure Blob](config/backends/storage/azure_blob.md)
-- [Google Storage](config/backends/storage/google_storage.md)
-- [Alibaba Aliyun Object Storage Service](config/backends/storage/aliyun_oss.md)
-- [Ceph](config/backends/storage/ceph.md)
-- [Redis](config/backends/storage/redis.md)
-- [Swift](config/backends/storage/swift.md)
 
 ## Use cases
 - [Serverless benchmarks](https://cloudbutton.github.io/benchmarks)

@@ -43,7 +43,7 @@ The Cloudbutton toolkit is built on top of the [Lithops framework](https://githu
    ```
 
 ## Documentation
-- [Website](https://cloudbutton.github.io)
+- [Website](https://lithops-cloud.github.io)
 - [API Examples](https://github.com/cloudbutton/cloudbutton/tree/master/examples)
 - [Toolkit Examples](https://github.com/cloudbutton/examples)
 

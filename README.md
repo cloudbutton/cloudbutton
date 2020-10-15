@@ -12,7 +12,7 @@ The Cloudbutton toolkit is built on top of the [Lithops framework](https://githu
 |Google Cloud | Google Cloud Functions <br> Google Cloud Run| Google Cloud Storage|
 |Microsoft Azure| Microsoft Azure Functions | Microsoft Azure Blob |
 |Alibaba Aliyun| Aliyun Function Compute | Aliyun Object Storage Service |
-|Generic| Knative | Ceph, Redis, Swift |
+|Generic| Knative <br> OpenWhisk | Ceph <br> Redis <br> OpenStack Swift |
 
 
 ## Quick start
@@ -44,7 +44,7 @@ The Cloudbutton toolkit is built on top of the [Lithops framework](https://githu
 
 ## Documentation
 - [Website](https://lithops-cloud.github.io)
-- [API Examples](https://github.com/cloudbutton/cloudbutton/tree/master/examples)
+- [API Examples](examples)
 - [Toolkit Examples](https://github.com/cloudbutton/examples)
 
 ## Use cases

@@ -19,7 +19,6 @@ setup(
         'PyYAML',
         'python-dateutil',
         'pika==0.13.1',
-        'enum34',
         'glob2',
         'tqdm',
         'lxml',

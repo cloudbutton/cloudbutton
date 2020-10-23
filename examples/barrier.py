@@ -20,6 +20,7 @@ if __name__ == "__main__":
 
         print('Result queue empty:', q.empty())
 
+        time.sleep(2)
         p.apply_async(f, [barrier, q])
         for _ in range(n):
             print(q.get())

@@ -225,7 +225,7 @@ class BaseContext(object):
         pass
 
     def getpid(self):
-        executor_id, job_id, call_id = os.environ.get('CLOUDBUTTON_EXECUTION_ID').rsplit('/', 2)
+        executor_id, job_id, call_id = os.environ.get('LITHOPS_EXECUTION_ID').rsplit('/', 2)
         return call_id
 
 

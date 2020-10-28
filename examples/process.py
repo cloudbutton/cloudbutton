@@ -2,6 +2,8 @@ from cloudbutton.multiprocessing import Process
 
 
 def f(name):
+    import os
+    print(os.environ)
     print('hello', name)
 
 

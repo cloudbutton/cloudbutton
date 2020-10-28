@@ -25,7 +25,7 @@ if __name__ == '__main__':
         q.put(x)
 
     # uncomment to hang on the q.join
-    #q.put(11)  
+    #q.put(11)
     q.join()
 
     q.put(-1) # end loop

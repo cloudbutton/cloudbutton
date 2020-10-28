@@ -14,4 +14,3 @@ if __name__ == "__main__":
 
     os.remove(filepath)
     print(os.listdir(dirname))
-    

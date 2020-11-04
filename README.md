@@ -1,3 +1,7 @@
+# This repo has been merged to the official [Lithops repo](https://github.com/lithops-cloud/lithops)
+
+-------
+
 <p align="center"> <h1> Cloudbutton Toolkit </h1> </p>
 
 The Cloudbutton toolkit is a multicloud framework that enables the transparent execution of unmodified, regular Python code against disaggregated cloud resources. With the Cloudbutton toolkit, there is no new API to learn. It provides the same API as the Python's standard [**multiprocessing**](https://docs.python.org/3/library/multiprocessing.html) library. Any program built on top of this library can be run on any of the major serverless computing services. Its multicloud-agnostic architecture ensures portability across Clouds and overcomes vendor lock-in.

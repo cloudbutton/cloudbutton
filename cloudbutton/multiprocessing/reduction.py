@@ -6,6 +6,7 @@
 # Copyright (c) 2006-2008, R Oudkerk
 # Licensed to PSF under a Contributor Agreement.
 #
+# Modifications Copyright (c) 2020 Cloudlab URV
 
 from abc import ABCMeta, abstractmethod
 import copyreg
